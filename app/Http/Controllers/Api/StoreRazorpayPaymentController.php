@@ -95,8 +95,7 @@ class StoreRazorpayPaymentController extends Controller
                         ->first();
 
                     if ($deliveryRate) {
-
-                        $deliveryCharge = $deliveryRate->delivery_charge;
+                        $deliveryCharge = $subtotal >= 800 ? 0 : (float) $deliveryRate->delivery_charge;
                     }
                 }
             }
@@ -298,8 +297,7 @@ class StoreRazorpayPaymentController extends Controller
                         ->first();
 
                     if ($deliveryRate) {
-
-                        $deliveryCharge = $deliveryRate->delivery_charge;
+                        $deliveryCharge = $subtotal >= 800 ? 0 : (float) $deliveryRate->delivery_charge;
                     }
                 }
             }
@@ -809,9 +807,7 @@ class StoreRazorpayPaymentController extends Controller
                         ->first();
 
                     if ($deliveryRate) {
-
-                        $deliveryCharge =
-                            $deliveryRate->delivery_charge;
+                        $deliveryCharge = $subtotal >= 800 ? 0 : (float) $deliveryRate->delivery_charge;
                     }
                 }
             }

@@ -177,7 +177,7 @@ class StoreCodOrderController extends Controller
                 ->first();
 
             if ($deliveryRate) {
-                $deliveryCharge = $deliveryRate->delivery_charge;
+                $deliveryCharge = $subtotal >= 800 ? 0 : (float) $deliveryRate->delivery_charge;
             }
 
             $codCharge = env('COD_CHARGE', 499);
@@ -262,7 +262,7 @@ class StoreCodOrderController extends Controller
                 'transaction_id' => 'COD-' . strtoupper(uniqid()),
                 'amount' => $finalAmount,
                 'currency' => 'INR',
-                'payment_status' => 'pending',
+                'payment_status' => 'paid',
                 'payment_mode' => 'cod',
                 'customer_email' => $user->email,
                 'customer_phone' =>
@@ -418,7 +418,6 @@ class StoreCodOrderController extends Controller
                         'discount' => $discount,
                         'delivery_charge' => $deliveryCharge,
                         'cod_charge' => $codCharge,
-                        
                         'final_amount' => $finalAmount,
                     ],
                     'items' => $order->items

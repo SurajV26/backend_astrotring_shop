@@ -23,7 +23,8 @@ class AlternativeAddress extends Model
         'state_code',
         'country',
         'address',
-        'pincode'
+        'pincode',
+        'by_default',
     ];
 
     public function user()
