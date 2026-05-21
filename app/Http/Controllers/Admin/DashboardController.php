@@ -29,12 +29,12 @@ class DashboardController extends AdminController
         return response()->json([
 
             'total_users' => User::where('type', 'user')
-                ->whereBetween('created_at', [$start, $end])
+                // ->whereBetween('created_at', [$start, $end])
                 ->count(),
 
             'online_users' => User::where('type', 'user')
                 ->where('is_online', 1)
-                ->whereBetween('updated_at', [$start, $end])
+                // ->whereBetween('updated_at', [$start, $end])
                 ->count(),
 
             'total_orders' => Order::whereBetween('created_at', [$start, $end])
