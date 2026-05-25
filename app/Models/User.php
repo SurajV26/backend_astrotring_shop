@@ -237,11 +237,39 @@ class User extends Authenticatable
         parent::boot();
 
         static::deleting(function ($user) {
-            if ($user->isForceDeleting() === false) {
+
+            if (!$user->isForceDeleting()) {
+
+                $timestamp = now()->timestamp;
+
+                // CHANGE UNIQUE FIELDS
+                if ($user->email) {
+                    $user->email = $timestamp . '_deleted_' . $user->email;
+                }
+
+                if ($user->mobile) {
+                    $user->mobile = $timestamp . '_deleted_' . $user->mobile;
+                }
+
+                if ($user->username) {
+                    $user->username = $timestamp . '_deleted_' . $user->username;
+                }
+
+                if ($user->code) {
+                    $user->code = $timestamp . '_deleted_' . $user->code;
+                }
+
+                // SAVE CHANGES
+                $user->saveQuietly();
+
+                // SOFT DELETE WALLET
                 if ($user->wallet) {
                     $user->wallet()->delete();
                 }
+
             } else {
+
+                // FORCE DELETE WALLET
                 if ($user->wallet) {
                     $user->wallet()->forceDelete();
                 }
