@@ -81,7 +81,7 @@
                         <thead>
                             <tr>
                                 <th>User Details</th>
-                                <th>Username</th>
+                                {{-- <th>Username</th> --}}
                                 <th>Email</th>
                                 <th>Mobile</th>
                                 <th>Status</th>
@@ -142,9 +142,6 @@
 
                 columns: [{
                         data: 'code_name'
-                    },
-                    {
-                        data: 'username'
                     },
                     {
                         data: 'email'

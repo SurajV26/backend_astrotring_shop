@@ -27,9 +27,9 @@
                         {{ number_format($user->reviews->avg('rating') ?? 0, 1) }}
 
                         <span class="text-warning">
-                            @for($i = 1; $i <= 5; $i++) {!! $i <=round($user->reviews->avg('rating')) ? '&#9733;' :
-                                '&#9734;' !!}
-                                @endfor
+                            @for ($i = 1; $i <= 5; $i++)
+                                {!! $i <= round($user->reviews->avg('rating')) ? '&#9733;' : '&#9734;' !!}
+                            @endfor
                         </span>
                     </td>
                 </tr>
@@ -38,11 +38,12 @@
             <h6 class="text-primary mt-3">Latest Reviews</h6>
 
             <div style="max-height: 200px; overflow-y: auto;">
-                @foreach($latest_reviews as $review)
-                <div class="border rounded p-2 mb-2">
-                    <strong>{{ $review->astrologer->name }}</strong><br>
+                @foreach ($latest_reviews as $review)
+                    <div class="border rounded p-2 mb-2">
+                        <strong>{{ $review->astrologer->name }}</strong><br>
 
-                    @for($i = 1; $i <= 5; $i++) {!! $i <=$review->rating ? '&#9733;' : '&#9734;' !!}
+                        @for ($i = 1; $i <= 5; $i++)
+                            {!! $i <= $review->rating ? '&#9733;' : '&#9734;' !!}
                         @endfor
                         <br>
 
@@ -51,11 +52,11 @@
                         <div class="text-muted small">
                             {{ $review->created_at->format('d M Y h:i A') }}
                         </div>
-                </div>
+                    </div>
                 @endforeach
 
-                @if($latest_reviews->count() === 0)
-                <p class="text-muted">No reviews yet.</p>
+                @if ($latest_reviews->count() === 0)
+                    <p class="text-muted">No reviews yet.</p>
                 @endif
             </div>
 
@@ -111,6 +112,14 @@
                 <tr>
                     <th>Pincode</th>
                     <td>{{ $user->pincode ?? 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <th>Online Status</th>
+                    <td>
+                        <span class="badge {{ $user->is_online ? 'bg-success' : 'bg-secondary' }}">
+                            {{ $user->is_online ? 'Online' : 'Offline' }}
+                        </span>
+                    </td>
                 </tr>
             </table>
 
@@ -174,28 +183,36 @@
                     <th>Last Seen</th>
                     <td>{{ $user->last_seen_at ? $user->last_seen_at->diffForHumans() : 'N/A' }}</td>
                 </tr>
+                <tr>
+                    <th>About</th>
+                    <td>
+                        <div class="overflow-auto" style="max-height:50px; max-width:250px;">
+                            {{ $user->about ?? 'N/A' }}
+                        </div>
+                    </td>
+                </tr>
             </table>
         </div>
 
         <div class="col-md-3">
             <h5 class="text-primary mt-3">Recharge History</h5>
             <div style="max-height:300px;overflow-y:auto;">
-            <table class="table table-bordered">
-                @forelse($rechargeHistory as $r)
-                    <tr>
-                        <td>
-                            ₹ {{ number_format($r->amount,2) }} <br>
-                            <small class="text-muted">
-                                {{ \Carbon\Carbon::parse($r->recharged_at)->format('d M Y h:i A') }}
-                            </small>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td class="text-muted text-center">No recharge history</td>
-                    </tr>
-                @endforelse
-            </table>
+                <table class="table table-bordered">
+                    @forelse($rechargeHistory as $r)
+                        <tr>
+                            <td>
+                                ₹ {{ number_format($r->amount, 2) }} <br>
+                                <small class="text-muted">
+                                    {{ \Carbon\Carbon::parse($r->recharged_at)->format('d M Y h:i A') }}
+                                </small>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td class="text-muted text-center">No recharge history</td>
+                        </tr>
+                    @endforelse
+                </table>
             </div>
         </div>
 
@@ -204,48 +221,48 @@
 
             <div style="max-height: 400px; overflow-y: auto;">
                 @forelse($interactionHistory as $h)
-                <div class="border rounded p-3 mb-3 shadow-sm">
+                    <div class="border rounded p-3 mb-3 shadow-sm">
 
-                    <div class="d-flex justify-content-between">
-                        <strong>
-                            {{ $h->astrologer_code }} – {{ $h->astrologer_name }}
-                        </strong>
+                        <div class="d-flex justify-content-between">
+                            <strong>
+                                {{ $h->astrologer_code }} – {{ $h->astrologer_name }}
+                            </strong>
 
-                        <span class="badge {{ $h->type === 'CHAT' ? 'bg-info' : 'bg-warning' }}">
-                            {{ $h->type }}
-                        </span>
+                            <span class="badge {{ $h->type === 'CHAT' ? 'bg-info' : 'bg-warning' }}">
+                                {{ $h->type }}
+                            </span>
+                        </div>
+
+                        <table class="table table-sm table-bordered mt-2 mb-0">
+                            <tr>
+                                <th width="25%">Start</th>
+                                <td>{{ \Carbon\Carbon::parse($h->started_at)->format('d M Y h:i A') }}</td>
+                            </tr>
+                            <tr>
+                                <th>End</th>
+                                <td>{{ \Carbon\Carbon::parse($h->ended_at)->format('d M Y h:i A') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Duration</th>
+                                <td>{{ floor($h->duration / 60) }} mins</td>
+                            </tr>
+                            <tr>
+                                <th>Amount</th>
+                                <td>₹ {{ number_format($h->amount, 2) }}</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td>
+                                    <span class="badge bg-success">
+                                        {{ ucfirst($h->status) }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+
                     </div>
-
-                    <table class="table table-sm table-bordered mt-2 mb-0">
-                        <tr>
-                            <th width="25%">Start</th>
-                            <td>{{ \Carbon\Carbon::parse($h->started_at)->format('d M Y h:i A') }}</td>
-                        </tr>
-                        <tr>
-                            <th>End</th>
-                            <td>{{ \Carbon\Carbon::parse($h->ended_at)->format('d M Y h:i A') }}</td>
-                        </tr>
-                        <tr>
-                            <th>Duration</th>
-                            <td>{{ floor($h->duration / 60) }} mins</td>
-                        </tr>
-                        <tr>
-                            <th>Amount</th>
-                            <td>₹ {{ number_format($h->amount, 2) }}</td>
-                        </tr>
-                        <tr>
-                            <th>Status</th>
-                            <td>
-                                <span class="badge bg-success">
-                                    {{ ucfirst($h->status) }}
-                                </span>
-                            </td>
-                        </tr>
-                    </table>
-
-                </div>
                 @empty
-                <p class="text-muted">No interaction history found.</p>
+                    <p class="text-muted">No interaction history found.</p>
                 @endforelse
             </div>
         </div>

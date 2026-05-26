@@ -26,6 +26,7 @@ class UserController extends AdminController
     public function getList(Request $request)
     {
         $list = User::where("type", "user")
+            ->when($request->user_id !== null && $request->user_id !== "", fn($q) => $q->where("id", $request->user_id))
             ->when($request->status !== null && $request->status !== "", fn($q) => $q->where("status", $request->status))
             ->orderByDesc("id");
 
