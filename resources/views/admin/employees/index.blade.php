@@ -220,19 +220,25 @@
                         render: function (data, type, row) {
 
                             return `
-                                <a href="{{ route('admin.employees.update.index') }}/${row.id}"
-                                   class="btn btn-soft-info">
+                                <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap">
 
-                                    <i class="bx bx-pencil"></i>
+                                    <a href="/permissions/update/${row.id}" 
+                                    class="btn btn-primary btn-sm waves-effect waves-light">
+                                        <i class="fas fa-user-shield"></i>
+                                    </a>
 
-                                </a>
+                                    <a href="{{ route('admin.employees.update.index') }}/${row.id}"
+                                    class="btn btn-soft-info btn-sm waves-effect waves-light">
+                                        <i class="bx bx-pencil"></i>
+                                    </a>
 
-                                <button class="btn btn-soft-danger delete-entry"
-                                        data-href="{{ route('admin.employees.delete') }}/${row.id}">
+                                    <button type="button"
+                                            class="btn btn-soft-danger btn-sm waves-effect waves-light delete-entry"
+                                            data-href="{{ route('admin.employees.delete') }}/${row.id}">
+                                        <i class="bx bx-trash"></i>
+                                    </button>
 
-                                    <i class="bx bx-trash"></i>
-
-                                </button>
+                                </div>
                             `;
                         }
                     }

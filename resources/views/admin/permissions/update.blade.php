@@ -12,7 +12,7 @@
             </h4>
 
             <div class="page-title-right">
-                <a href="{{ route('admin.permissions.index') }}" class="btn btn-primary">
+                <a href="{{ route('admin.employees.index') }}" class="btn btn-primary">
                     <i class="fas fa-arrow-left"></i> Back
                 </a>
             </div>
