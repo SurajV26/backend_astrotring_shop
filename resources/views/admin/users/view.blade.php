@@ -122,7 +122,6 @@
                     </td>
                 </tr>
             </table>
-
         </div>
 
         <!-- SECTION 3: WALLET SUMMARY -->
