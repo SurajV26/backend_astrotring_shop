@@ -85,7 +85,7 @@
                                 <div class="col-lg-4">
                                     <div class="form-group">
                                         <label class="form-label fw-bold">Date of Birth :</label>
-                                        <input type="date" name="dob" class="form-control" value="{{ $user->dob }}">
+                                        <input type="date" name="dob" class="form-control" value="{{ $user->dob ? \Carbon\Carbon::parse($user->dob)->format('Y-m-d') : '' }}">
                                     </div>
                                 </div>
 

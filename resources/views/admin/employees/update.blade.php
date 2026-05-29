@@ -138,7 +138,7 @@
                                 </label>
 
                                 <input type="date" name="date_of_joining" class="form-control"
-                                    value="{{ $employee->date_of_joining }}">
+                                    value="{{ $employee->date_of_joining ? \Carbon\Carbon::parse($employee->date_of_joining)->format('Y-m-d') : '' }}">
 
                             </div>
 

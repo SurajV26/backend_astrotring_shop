@@ -37,7 +37,7 @@ class PermissionController extends AdminController
         $user->save();
 
         return redirect()
-            ->route('admin.permissions.index')
+            ->route('admin.employees.index')
             ->with('success', 'Permissions updated successfully!');
     }
 }
