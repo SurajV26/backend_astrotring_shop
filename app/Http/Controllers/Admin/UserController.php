@@ -42,47 +42,9 @@ class UserController extends AdminController
             ->make(true);
     }
 
-    public function getStatesByCountry($country_id)
-    {
-        if (! Country::where('id', $country_id)->exists()) {
-            return response()->json(['message' => 'Country not found.'], 404);
-        }
-
-        $states = State::where('country_id', $country_id)->pluck('name', 'id');
-
-        return response()->json($states);
-    }
-
-    public function getCitiesByState($state_id)
-    {
-        if (! State::where('id', $state_id)->exists()) {
-            return response()->json(['message' => 'State not found.'], 404);
-        }
-
-        $cities = City::where('state_id', $state_id)->pluck('name', 'id');
-
-        return response()->json($cities);
-    }
-
-    public function getPinCodesByCity($city_id)
-    {
-        if (! City::where('id', $city_id)->exists()) {
-            return response()->json(['message' => 'City not found.'], 404);
-        }
-
-        $pin_codes = PinCode::where('city_id', $city_id)->pluck('pin_code', 'id');
-
-        return response()->json($pin_codes);
-    }
-
     public function getCreate(Request $request)
     {
-        $countries = \App\Models\Country::all();
-        $states = \App\Models\State::all();
-        $cities = \App\Models\City::all();
-        $pin_codes = \App\Models\PinCode::all();
-
-        return view('admin.users.create', compact('cities', 'states', 'countries', 'pin_codes'));
+        return view('admin.users.create');
     }
 
     public function postCreate(Request $request)
@@ -165,12 +127,7 @@ class UserController extends AdminController
     {
         $user = User::with("wallet")->findOrFail($request->id);
 
-        $countries = \App\Models\Country::all();
-        $states = \App\Models\State::where('country_id', $user->country_id)->get();
-        $cities = \App\Models\City::where('state_id', $user->state_id)->get();
-        $pin_codes = \App\Models\PinCode::where('city_id', $user->city_id)->get();
-
-        return view('admin.users.update', compact('user', 'cities', 'states', 'countries', 'pin_codes'));
+        return view('admin.users.update', compact('user'));
     }
 
     public function postUpdate(Request $request)
