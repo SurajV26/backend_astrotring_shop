@@ -50,6 +50,11 @@ class EmployeeController extends AdminController
             'mobile' => 'nullable|digits:10|unique:users,mobile',
             'username' => 'required|unique:users,username',
             'commission_percentage' => 'nullable|numeric|min:0|max:100',
+            'company_name' => 'nullable|string|max:255',
+            'affiliate_type' => 'nullable|in:blogger,influencer,agency,publisher,other',
+            'traffic_sources' => 'nullable|array',
+            'promotion_plan' => 'nullable|string',
+            'expected_leads' => 'nullable|in:less_than_50,50_100,100_500,500_plus',
             'password' => 'required|min:6|confirmed',
             'date_of_joining' => 'nullable|date',
             'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
@@ -77,6 +82,11 @@ class EmployeeController extends AdminController
             $employee->password = bcrypt($request->password);
             $employee->date_of_joining = $request->date_of_joining;
             $employee->address = $request->address;
+            $employee->company_name = $request->company_name;
+            $employee->affiliate_type = $request->affiliate_type;
+            $employee->traffic_sources = $request->traffic_sources;
+            $employee->promotion_plan = $request->promotion_plan;
+            $employee->expected_leads = $request->expected_leads;
             $employee->status = $request->status ?? 1;
             $employee->created_by = auth()->id();
             if ($request->hasFile('profile_image')) {
@@ -118,6 +128,11 @@ class EmployeeController extends AdminController
             'mobile' => "nullable|digits:10|unique:users,mobile,{$request->id}",
             'username' => "required|unique:users,username,{$request->id}",
             'commission_percentage' => 'nullable|numeric|min:0|max:100',
+            'company_name' => 'nullable|string|max:255',
+            'affiliate_type' => 'nullable|in:blogger,influencer,agency,publisher,other',
+            'traffic_sources' => 'nullable|array',
+            'promotion_plan' => 'nullable|string',
+            'expected_leads' => 'nullable|in:less_than_50,50_100,100_500,500_plus',
             'password' => 'nullable|min:6|confirmed',
             'date_of_joining' => 'nullable|date',
             'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
@@ -147,6 +162,11 @@ class EmployeeController extends AdminController
             }
             $employee->date_of_joining = $request->date_of_joining;
             $employee->address = $request->address;
+            $employee->company_name = $request->company_name;
+            $employee->affiliate_type = $request->affiliate_type;
+            $employee->traffic_sources = $request->traffic_sources;
+            $employee->promotion_plan = $request->promotion_plan;
+            $employee->expected_leads = $request->expected_leads;
             $employee->status = $request->status ?? 1;
             $employee->modified_by = auth()->id();
             if ($request->hasFile('profile_image')) {

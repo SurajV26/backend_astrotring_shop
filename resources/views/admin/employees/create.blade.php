@@ -130,39 +130,106 @@
                             </div>
 
                             {{-- PASSWORD --}}
-                            <div class="col-md-6 mb-3">
-
-                                <label class="form-label fw-bold">
-                                    Password
-                                    <sup class="text-danger">*</sup>
-                                </label>
-
-                                <input type="password" name="password" class="form-control" placeholder="Enter Password">
-
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <label for="password" class="form-label fw-bold">Password <sup
+                                            class="text-danger fs-5">*</sup> :</label>
+                                    <div class="input-group auth-pass-inputgroup">
+                                        <input type="password" id="password" name="password" class="form-control"
+                                            placeholder="Enter Password" />
+                                        <button class="btn btn-light" type="button" id="password-addon"><i
+                                                class="mdi mdi-eye-outline"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- CONFIRM PASSWORD --}}
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <label for="cnfrm_password" class="form-label fw-bold">Confirm Password <sup
+                                            class="text-danger fs-5">*</sup> :</label>
+                                    <div class="input-group auth-pass-inputgroup">
+                                        <input type="password" id="cnfrm_password" name="password_confirmation"
+                                            class="form-control" placeholder="Enter Password Again" />
+                                        <button class="btn btn-light" type="button" id="password-addon"><i
+                                                class="mdi mdi-eye-outline"></i></button>
+                                    </div>
+                                </div>
                             </div>
 
-                            {{-- CONFIRM PASSWORD --}}
+                            {{-- COMPANY NAME --}}
                             <div class="col-md-6 mb-3">
-
                                 <label class="form-label fw-bold">
-                                    Confirm Password
-                                    <sup class="text-danger">*</sup>
+                                    Company Name
                                 </label>
+                                <input type="text" name="company_name" class="form-control"
+                                    placeholder="Enter Company Name">
+                            </div>
 
-                                <input type="password" name="password_confirmation" class="form-control"
-                                    placeholder="Confirm Password">
+                            {{-- AFFILIATE TYPE --}}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">
+                                    Affiliate Type
+                                </label>
+                                <select name="affiliate_type" class="form-control select2-class" data-placeholder="Select Affiliate Type">
+                                    <option value=""></option>
+                                    <option value="blogger">Blogger</option>
+                                    <option value="influencer">Influencer</option>
+                                    <option value="agency">Agency</option>
+                                    <option value="publisher">Publisher</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
 
+                            {{-- TRAFFIC SOURCES --}}
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <label class="form-label fw-bold">
+                                        Traffic Sources <sup class="text-danger fs-5">*</sup> :
+                                    </label>
+                                    <select name="traffic_sources[]" class="form-control select2-class" multiple
+                                        data-placeholder="Select Traffic Sources">
+                                        <option value=""></option>
+                                        <option value="SEO">SEO</option>
+                                        <option value="Google Ads">Google Ads</option>
+                                        <option value="Facebook Ads">Facebook Ads</option>
+                                        <option value="Instagram">Instagram</option>
+                                        <option value="YouTube">YouTube</option>
+                                        <option value="LinkedIn">LinkedIn</option>
+                                        <option value="Email Marketing">Email Marketing</option>
+                                        <option value="WhatsApp Marketing">WhatsApp Marketing</option>
+                                        <option value="Telegram">Telegram</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {{-- EXPECTED LEADS --}}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">
+                                    Expected Leads
+                                </label>
+                                <select name="expected_leads" class="form-control select2-class" data-placeholder="Select Expected Leads">
+                                    <option value=""></option>
+                                    <option value="less_than_50">Less Than 50</option>
+                                    <option value="50_100">50 - 100</option>
+                                    <option value="100_500">100 - 500</option>
+                                    <option value="500_plus">500+</option>
+                                </select>
+                            </div>
+
+                            {{-- PROMOTION PLAN --}}
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label fw-bold">
+                                    Promotion Plan
+                                </label>
+                                <textarea name="promotion_plan" rows="2" class="form-control" placeholder="Enter Promotion Plan"></textarea>
                             </div>
 
                             {{-- ADDRESS --}}
                             <div class="col-12 mb-3">
-
                                 <label class="form-label fw-bold">
                                     Address
                                 </label>
-
-                                <textarea name="address" rows="4" class="form-control" placeholder="Enter Address"></textarea>
-
+                                <textarea name="address" rows="2" class="form-control" placeholder="Enter Address"></textarea>
                             </div>
 
                         </div>

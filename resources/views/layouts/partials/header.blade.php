@@ -46,11 +46,11 @@
                         <span key="t-profile">Profile</span>
                     </a>
 
-                    @if (Can::is_accessible('system_settings'))
+                    {{-- @if (Can::is_accessible('system_settings'))
                     <a class="dropdown-item d-block" href="{{ route('admin.settings.index') }}"><i
                             class="bx bx-wrench font-size-16 align-middle me-1"></i> <span
                             key="t-settings">Settings</span></a>
-                    @endif
+                    @endif --}}
 
                     <div class="dropdown-divider"></div>
                     <a class="dropdown-item text-danger" href="{{ route('admin.profile.logout') }}"><i

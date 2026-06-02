@@ -132,26 +132,138 @@
                             </div>
 
                             {{-- PASSWORD --}}
-                            <div class="col-md-6 mb-3">
-
-                                <label class="form-label fw-bold">
-                                    Password
-                                </label>
-
-                                <input type="password" name="password" class="form-control" placeholder="Enter Password">
-
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <label for="password" class="form-label fw-bold">Password <sup
+                                            class="text-danger fs-5">*</sup> :</label>
+                                    <div class="input-group auth-pass-inputgroup">
+                                        <input type="password" id="password" name="password" class="form-control"
+                                            placeholder="Enter Password" />
+                                        <button class="btn btn-light" type="button" id="password-addon"><i
+                                                class="mdi mdi-eye-outline"></i></button>
+                                        <label class="text-danger fw-bold">
+                                            Password (Leave blank to keep unchanged)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- CONFIRM PASSWORD --}}
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <label for="cnfrm_password" class="form-label fw-bold">Confirm Password <sup
+                                            class="text-danger fs-5">*</sup> :</label>
+                                    <div class="input-group auth-pass-inputgroup">
+                                        <input type="password" id="cnfrm_password" name="password_confirmation"
+                                            class="form-control" placeholder="Enter Password Again" />
+                                        <button class="btn btn-light" type="button" id="password-addon"><i
+                                                class="mdi mdi-eye-outline"></i></button>
+                                    </div>
+                                </div>
                             </div>
 
-                            {{-- CONFIRM PASSWORD --}}
+                            {{-- COMPANY NAME --}}
                             <div class="col-md-6 mb-3">
-
                                 <label class="form-label fw-bold">
-                                    Confirm Password
+                                    Company Name
                                 </label>
+                                <input type="text" name="company_name" class="form-control"
+                                    value="{{ $employee->company_name }}">
+                            </div>
 
-                                <input type="password" name="password_confirmation" class="form-control"
-                                    placeholder="Confirm Password">
+                            {{-- AFFILIATE TYPE --}}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">
+                                    Affiliate Type
+                                </label>
+                                <select name="affiliate_type" class="form-control select2-class"
+                                    data-placeholder="Select Affiliate Type">
+                                    <option value=""></option>
+                                    <option value="blogger"
+                                        {{ $employee->affiliate_type == 'blogger' ? 'selected' : '' }}>
+                                        Blogger</option>
+                                    <option value="influencer"
+                                        {{ $employee->affiliate_type == 'influencer' ? 'selected' : '' }}>Influencer
+                                    </option>
+                                    <option value="agency" {{ $employee->affiliate_type == 'agency' ? 'selected' : '' }}>
+                                        Agency</option>
+                                    <option value="publisher"
+                                        {{ $employee->affiliate_type == 'publisher' ? 'selected' : '' }}>Publisher</option>
+                                    <option value="other" {{ $employee->affiliate_type == 'other' ? 'selected' : '' }}>
+                                        Other</option>
+                                </select>
+                            </div>
 
+                            {{-- TRAFFIC SOURCES --}}
+                            @php
+                                $trafficSources = $employee->traffic_sources ?? [];
+                            @endphp
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <label class="form-label fw-bold">
+                                        Traffic Sources <sup class="text-danger fs-5">*</sup> :
+                                    </label>
+                                    <select name="traffic_sources[]" class="form-control select2-class" multiple
+                                        data-placeholder="Select Traffic Sources">
+                                        <option value=""></option>
+                                        <option value="SEO" {{ in_array('SEO', $trafficSources) ? 'selected' : '' }}>
+                                            SEO</option>
+                                        <option value="Google Ads"
+                                            {{ in_array('Google Ads', $trafficSources) ? 'selected' : '' }}>Google Ads
+                                        </option>
+                                        <option value="Facebook Ads"
+                                            {{ in_array('Facebook Ads', $trafficSources) ? 'selected' : '' }}>Facebook Ads
+                                        </option>
+                                        <option value="Instagram"
+                                            {{ in_array('Instagram', $trafficSources) ? 'selected' : '' }}>Instagram
+                                        </option>
+                                        <option value="YouTube"
+                                            {{ in_array('YouTube', $trafficSources) ? 'selected' : '' }}>YouTube</option>
+                                        <option value="LinkedIn"
+                                            {{ in_array('LinkedIn', $trafficSources) ? 'selected' : '' }}>LinkedIn</option>
+                                        <option value="Email Marketing"
+                                            {{ in_array('Email Marketing', $trafficSources) ? 'selected' : '' }}>Email
+                                            Marketing</option>
+                                        <option value="WhatsApp Marketing"
+                                            {{ in_array('WhatsApp Marketing', $trafficSources) ? 'selected' : '' }}>
+                                            WhatsApp Marketing</option>
+                                        <option value="Telegram"
+                                            {{ in_array('Telegram', $trafficSources) ? 'selected' : '' }}>Telegram</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {{-- EXPECTED LEADS --}}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">
+                                    Expected Leads
+                                </label>
+                                <select name="expected_leads" class="form-control select2-class"
+                                    data-placeholder="Select Expected Leads">
+                                    <option value=""></option>
+                                    <option value="less_than_50"
+                                        {{ $employee->expected_leads === 'less_than_50' ? 'selected' : '' }}>
+                                        Less Than 50
+                                    </option>
+                                    <option value="50_100" {{ $employee->expected_leads === '50_100' ? 'selected' : '' }}>
+                                        50 - 100
+                                    </option>
+                                    <option value="100_500"
+                                        {{ $employee->expected_leads === '100_500' ? 'selected' : '' }}>
+                                        100 - 500
+                                    </option>
+                                    <option value="500_plus"
+                                        {{ $employee->expected_leads === '500_plus' ? 'selected' : '' }}>
+                                        500+
+                                    </option>
+                                </select>
+                            </div>
+
+                            {{-- PROMOTION PLAN --}}
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label fw-bold">
+                                    Promotion Plan
+                                </label>
+                                <textarea name="promotion_plan" rows="2" class="form-control" placeholder="Enter Promotion Plan">{{ $employee->promotion_plan }}</textarea>
                             </div>
 
                             {{-- ADDRESS --}}
@@ -161,7 +273,7 @@
                                     Address
                                 </label>
 
-                                <textarea name="address" rows="4" class="form-control" placeholder="Enter Address">{{ $employee->address }}</textarea>
+                                <textarea name="address" rows="2" class="form-control" placeholder="Enter Address">{{ $employee->address }}</textarea>
 
                             </div>
 
