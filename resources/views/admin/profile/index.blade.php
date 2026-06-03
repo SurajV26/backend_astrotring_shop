@@ -78,7 +78,7 @@
                                             @if (!$admin->isSuperAdmin())
                                                 <input type="text" id="mobile_no" name="mobile_no" class="form-control"
                                                     placeholder="Enter Mobile Number" value="{{ $admin->mobile }}"
-                                                    disabled />
+                                                    readonly />
                                             @else
                                                 <input type="text" id="mobile_no" name="mobile_no" class="form-control"
                                                     placeholder="Enter Mobile Number" value="{{ $admin->mobile }}" />

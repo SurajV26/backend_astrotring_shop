@@ -23,19 +23,32 @@ class ProfileController extends AdminController
             'email' => 'nullable|email|unique:users,email,' . auth()->id(),
             'mobile_no' => 'required|digits:10',
             'address' => 'nullable|max:1000',
+            'company_name' => 'nullable|string|max:255',
+            'affiliate_type' => 'nullable|in:blogger,influencer,agency,publisher,other',
+            'traffic_sources' => 'nullable|array',
+            'promotion_plan' => 'nullable|string',
+            'expected_leads' => 'nullable|in:less_than_50,50_100,100_500,500_plus',
             'profile_image' => 'nullable|mimes:jpeg,png,bmp,jpg|max:4096',
             'is_two_factor_auth_enabled' => 'nullable|in:0,1',
         ]);
         if ($validator->fails()) {
             return response()->json(['message' => $validator->errors()->first()], 422);
         }
-        $dataObj = objFromPost(['name', 'email', 'mobile_no', 'address', 'is_two_factor_auth_enabled']);
+        $dataObj = objFromPost(['name', 'email', 'mobile_no', 'address', 'company_name', 'affiliate_type', 'traffic_sources', 'promotion_plan', 'expected_leads', 'is_two_factor_auth_enabled']);
 
         try {
             $user = auth()->user();
             $user->name = $dataObj->name;
             $user->mobile = $dataObj->mobile_no;
             $user->address = $dataObj->address;
+
+            if ($user->type == 'employee') {
+                $user->company_name = $dataObj->company_name;
+                $user->affiliate_type = $dataObj->affiliate_type;
+                $user->traffic_sources = $dataObj->traffic_sources;
+                $user->promotion_plan = $dataObj->promotion_plan;
+                $user->expected_leads = $dataObj->expected_leads;
+            }
 
             if ($dataObj->email) {
                 $user->email = strtolower($dataObj->email);
