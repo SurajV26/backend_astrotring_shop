@@ -335,6 +335,12 @@ class User extends Authenticatable
                 \Mail::to('no-reply@astrotring.com')
                     ->send(new \App\Mail\AstroRegistrationNotification($user));
             }
+
+            if ($user->role_id == 4 && $user->status == 0) {
+
+                \Mail::to('no-reply@astrotring.shop')
+                    ->send(new \App\Mail\AffiliateRegistrationNotification($user));
+            }
         });
 
         static::updated(function ($user) {
@@ -343,6 +349,24 @@ class User extends Authenticatable
 
                 \Mail::to($user->email)
                     ->send(new \App\Mail\AstroApprovedMail($user));
+            }
+            
+             if (
+                $user->role_id == 4 &&
+                $user->wasChanged('status') &&
+                $user->getOriginal('status') == 0 &&
+                $user->status == 1
+            ) {
+
+                if (empty($user->date_of_joining)) {
+
+                    $user->updateQuietly([
+                        'date_of_joining' => now(),
+                    ]);
+                }
+
+                \Mail::to($user->email)
+                    ->send(new \App\Mail\AffiliateApprovedMail($user));
             }
         });
     }

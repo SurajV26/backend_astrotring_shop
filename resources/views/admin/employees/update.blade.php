@@ -83,28 +83,23 @@
 
                             </div>
 
-                            {{-- COUNTRY CODE --}}
-                            <div class="col-md-2 mb-3">
+                            {{-- COUNTRY CODE/MOBILE --}}
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <label class="form-label fw-bold">
+                                        Mobile <sup class="text-danger fs-5">*</sup> :
+                                    </label>
 
-                                <label class="form-label fw-bold">
-                                    Code
-                                </label>
+                                    <div class="input-group">
+                                        <select name="country_code" id="country_code" class="form-select"
+                                            style="max-width:120px">
+                                            <option value="">Loading...</option>
+                                        </select>
 
-                                <input type="text" name="country_code" class="form-control"
-                                    value="{{ $employee->country_code ?? '+91' }}">
-
-                            </div>
-
-                            {{-- MOBILE --}}
-                            <div class="col-md-4 mb-3">
-
-                                <label class="form-label fw-bold">
-                                    Mobile
-                                </label>
-
-                                <input type="text" name="mobile" class="form-control" placeholder="Enter Mobile"
-                                    value="{{ $employee->mobile }}">
-
+                                        <input type="text" name="mobile" class="form-control" maxlength="10"
+                                            placeholder="Enter Mobile No" value="{{ $employee->mobile }}">
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- DATE OF JOINING --}}
@@ -228,6 +223,8 @@
                                             WhatsApp Marketing</option>
                                         <option value="Telegram"
                                             {{ in_array('Telegram', $trafficSources) ? 'selected' : '' }}>Telegram</option>
+                                        <option value="Other"
+                                            {{ in_array('Other', $trafficSources) ? 'selected' : '' }}>Other</option>
                                     </select>
                                 </div>
                             </div>
@@ -444,6 +441,38 @@
             });
 
         });
+    </script>
+    <script>
+        fetch('https://restcountries.com/v3.1/all?fields=name,idd,cca2')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('country_code');
+                select.innerHTML = '';
+
+                const employeeCountryCode = "{{ $employee->country_code }}";
+
+                data.forEach(country => {
+                    if (country.idd && country.idd.root && country.idd.suffixes) {
+                        country.idd.suffixes.forEach(suffix => {
+                            const code = country.idd.root + suffix;
+
+                            const option = document.createElement('option');
+                            option.value = code;
+                            option.textContent = `${code} (${country.cca2})`;
+
+                            // ✅ Existing employee's country pre-selected
+                            if (code === employeeCountryCode) {
+                                option.selected = true;
+                            }
+
+                            select.appendChild(option);
+                        });
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Country code API error:', error);
+            });
     </script>
 
 @endsection
