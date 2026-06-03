@@ -84,26 +84,23 @@
 
                             </div>
 
-                            {{-- COUNTRY CODE --}}
-                            <div class="col-md-2 mb-3">
+                            {{-- COUNTRY CODE/MOBILE --}}
+                            <div class="col-lg-6">
+                                <div class="form-group">
+                                    <label class="form-label fw-bold">
+                                        Mobile <sup class="text-danger fs-5">*</sup> :
+                                    </label>
 
-                                <label class="form-label fw-bold">
-                                    Code
-                                </label>
+                                    <div class="input-group">
+                                        <select name="country_code" id="country_code" class="form-select"
+                                            style="max-width:120px">
+                                            <option value="">Loading...</option>
+                                        </select>
 
-                                <input type="text" name="country_code" class="form-control" value="+91">
-
-                            </div>
-
-                            {{-- MOBILE --}}
-                            <div class="col-md-4 mb-3">
-
-                                <label class="form-label fw-bold">
-                                    Mobile
-                                </label>
-
-                                <input type="text" name="mobile" class="form-control" placeholder="Enter Mobile">
-
+                                        <input type="text" name="mobile" class="form-control" maxlength="10"
+                                            placeholder="Enter Mobile No">
+                                    </div>
+                                </div>
                             </div>
 
                             {{-- DATE OF JOINING --}}
@@ -170,7 +167,8 @@
                                 <label class="form-label fw-bold">
                                     Affiliate Type
                                 </label>
-                                <select name="affiliate_type" class="form-control select2-class" data-placeholder="Select Affiliate Type">
+                                <select name="affiliate_type" class="form-control select2-class"
+                                    data-placeholder="Select Affiliate Type">
                                     <option value=""></option>
                                     <option value="blogger">Blogger</option>
                                     <option value="influencer">Influencer</option>
@@ -198,6 +196,7 @@
                                         <option value="Email Marketing">Email Marketing</option>
                                         <option value="WhatsApp Marketing">WhatsApp Marketing</option>
                                         <option value="Telegram">Telegram</option>
+                                        <option value="Other">Other</option>
                                     </select>
                                 </div>
                             </div>
@@ -207,7 +206,8 @@
                                 <label class="form-label fw-bold">
                                     Expected Leads
                                 </label>
-                                <select name="expected_leads" class="form-control select2-class" data-placeholder="Select Expected Leads">
+                                <select name="expected_leads" class="form-control select2-class"
+                                    data-placeholder="Select Expected Leads">
                                     <option value=""></option>
                                     <option value="less_than_50">Less Than 50</option>
                                     <option value="50_100">50 - 100</option>
@@ -398,6 +398,36 @@
             });
 
         });
+    </script>
+    <script>
+        fetch('https://restcountries.com/v3.1/all?fields=name,idd,cca2')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('country_code');
+                select.innerHTML = '';
+
+                data.forEach(country => {
+                    if (country.idd && country.idd.root && country.idd.suffixes) {
+                        country.idd.suffixes.forEach(suffix => {
+                            const code = country.idd.root + suffix;
+
+                            const option = document.createElement('option');
+                            option.value = code;
+                            option.textContent = `${code} (${country.cca2})`;
+
+                            // India default
+                            if (code === '+91') {
+                                option.selected = true;
+                            }
+
+                            select.appendChild(option);
+                        });
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Country code API error:', error);
+            });
     </script>
 
 @endsection
