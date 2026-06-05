@@ -156,7 +156,7 @@
                                                 </label>
 
                                                 <input type="text" name="hsn_code" class="form-control"
-                                                    placeholder="Example: 71162000" value="71162000">
+                                                    placeholder="Example: 7103" value="7103">
 
                                             </div>
 
@@ -167,7 +167,7 @@
                                                 </label>
 
                                                 <input type="number" step="0.01" name="gst_rate"
-                                                    class="form-control" placeholder="Example: 3" value="3">
+                                                    class="form-control" placeholder="Example: 0.5" value="0.5">
 
                                             </div>
 

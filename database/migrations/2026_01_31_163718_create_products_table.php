@@ -38,8 +38,8 @@ return new class extends Migration
             
             $table->decimal('before_price', 10, 2)->nullable();
             $table->decimal('after_price', 10, 2)->nullable();
-            $table->string('hsn_code')->nullable()->default('71162000');
-            $table->decimal('gst_rate', 5, 2)->default(3.00);
+            $table->string('hsn_code')->nullable()->default('7103');
+            $table->decimal('gst_rate', 5, 2)->default(0.5);
 
             $table->text('shipping_info')->nullable();
             // Free shipping across India within 5–7 days.
