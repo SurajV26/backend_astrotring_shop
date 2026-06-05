@@ -102,7 +102,7 @@ class CouponController extends AdminController
             $request->merge(['max_discount' => null]);
         }
 
-        Coupon::create([
+        $coupon = Coupon::create([
             'employee_id'    => $request->employee_id ?? 1,
             'code'           => strtoupper(trim($request->code)),
             'discount_type'  => $request->discount_type,
@@ -114,8 +114,22 @@ class CouponController extends AdminController
             'is_visible'     => $request->is_visible ?? 1,
         ]);
 
+        if ($coupon->employee && $coupon->employee->email) {
+            try {
+                \Mail::to($coupon->employee->email)
+                    ->send(
+                        new \App\Mail\AffiliateCouponAssignedMail(
+                            $coupon->employee,
+                            $coupon
+                        )
+                    );
+            } catch (\Exception $e) {
+                \Log::error('Coupon mail failed: ' . $e->getMessage());
+            }
+        }
+
         return response()->json([
-            'message' => 'Coupon created successfully'
+            'message' => 'Coupon created successfully and sent to affiliate email.'
         ]);
     }
 
@@ -169,8 +183,24 @@ class CouponController extends AdminController
             'is_visible'     => $request->is_visible ?? 1,
         ]);
 
+        $coupon->refresh();
+
+        if ($coupon->employee && $coupon->employee->email) {
+            try {
+                \Mail::to($coupon->employee->email)
+                    ->send(
+                        new \App\Mail\AffiliateCouponAssignedMail(
+                            $coupon->employee,
+                            $coupon
+                        )
+                    );
+            } catch (\Exception $e) {
+                \Log::error('Coupon mail failed: ' . $e->getMessage());
+            }
+        }
+
         return response()->json([
-            'message' => 'Coupon updated successfully'
+            'message' => 'Coupon updated successfully and updated details emailed to affiliate.'
         ]);
     }
 
