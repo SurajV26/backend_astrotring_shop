@@ -22,7 +22,7 @@ use App\Models\Coupon;
 
 class StoreRazorpayPaymentController extends Controller
 {
-    protected $isTest = true; // true = test | false = live
+    protected $isTest = false; // true = test | false = live
 
     public function createOrder(Request $request)
     {
@@ -853,7 +853,8 @@ class StoreRazorpayPaymentController extends Controller
                 ]);
             }
 
-            $refundAmount = $order->total_amount;
+            // $refundAmount = $order->total_amount;
+            $refundAmount = $order->subtotal;
 
             // ðŸ”¥ WALLET
             $wallet = StoreWallet::where('user_id', $user->id)
@@ -892,7 +893,8 @@ class StoreRazorpayPaymentController extends Controller
             ]);
 
             // ðŸ”¥ ITEM-WISE REFUND (PROPORTIONAL)
-            $totalOrderAmount = $order->total_amount;
+            // $totalOrderAmount = $order->total_amount;
+            $totalOrderAmount = $order->subtotal;
 
             foreach ($order->items as $item) {
 
