@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('transaction_id')->nullable()->index();
             $table->decimal('amount', 12, 2);
             $table->string('currency')->default('INR');
-            $table->enum('payment_status', ['pending','success', 'refunded', 'failed'])->default('pending');
+            $table->enum('payment_status', ['pending','success', 'refunded', 'failed', 'cancelled'])->default('pending');
             $table->string('payment_mode')->nullable();
             $table->string('customer_email')->nullable();
             $table->string('customer_phone')->nullable();

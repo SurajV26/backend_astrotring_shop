@@ -448,4 +448,101 @@ class StoreCodOrderController extends Controller
             'cod_charge' => (float) env('COD_CHARGE', 49)
         ]);
     }
+    
+    public function cancelCodOrder($id)
+    {
+        DB::beginTransaction();
+    
+        try {
+    
+            $user = auth()->user();
+    
+            $order = Order::where('id', $id)
+                ->where('user_id', $user->id)
+                ->with('items')
+                ->firstOrFail();
+    
+            if ($order->status == 'cancelled') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Order already cancelled'
+                ]);
+            }
+    
+            if (in_array($order->status, ['shipped', 'delivered'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Order cannot be cancelled now'
+                ]);
+            }
+    
+            // STOCK WAPAS ADD
+            foreach ($order->items as $item) {
+    
+                $product = Product::where('id', $item->product_id)
+                    ->lockForUpdate()
+                    ->first();
+    
+                if ($product) {
+    
+                    $newStock = $product->stock_qty + $item->quantity;
+    
+                    $status = 'in_stock';
+    
+                    if ($newStock == 0) {
+                        $status = 'out_of_stock';
+                    } elseif ($newStock <= 5) {
+                        $status = 'few_left';
+                    }
+    
+                    $product->update([
+                        'stock_qty' => $newStock,
+                        'stock_status' => $status
+                    ]);
+                }
+            }
+    
+            // PAYMENT STATUS UPDATE
+            if ($order->payment_id) {
+                $updated = Payment::where('id', $order->payment_id)
+                    ->update(['payment_status' => 'cancelled']);
+    
+                if (!$updated) {
+                    throw new \Exception('Payment status update failed');
+                }
+            }
+    
+            // ORDER STATUS UPDATE
+            $order->update([
+                'status' => 'cancelled',
+                'shipping_status' => 'cancelled',
+                'cancelled_at' => now()
+            ]);
+    
+            DB::commit();
+    
+            return response()->json([
+                'status' => true,
+                'message' => 'COD order cancelled successfully',
+                'order' => [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status' => 'cancelled'
+                ]
+            ]);
+    
+        } catch (\Exception $e) {
+    
+            DB::rollBack();
+    
+            Log::error('COD CANCEL ERROR', [
+                'message' => $e->getMessage()
+            ]);
+    
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
 }
