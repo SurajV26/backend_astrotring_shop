@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\PurchaseApiController;
 use App\Http\Controllers\Api\AlternativeAddressApiController;
 use App\Http\Controllers\Api\CouponApiController;
 use App\Http\Controllers\Api\StoreReviewApiController;
+use App\Http\Controllers\Api\StoreCategoryReviewApiController;
 use App\Http\Controllers\Api\ReturnApiController;
 use App\Http\Controllers\Api\BannerApiController;
 use App\Http\Controllers\Api\HoroscopeGenerateController;
@@ -107,6 +108,9 @@ Route::post('order/{id}/delivered', [OrderApiController::class, 'markDelivered']
 
 // STORE REVIEWS
 Route::get('products/{id}/reviews', [StoreReviewApiController::class, 'productReviews']);
+
+// STORE Category REVIEWS
+Route::get('categories/{category}/reviews', [StoreCategoryReviewApiController::class, 'categoryReviews']);
 
 // ALL REVIEWS
 Route::get('reviews', [ReviewApiController::class, 'index']);
@@ -220,6 +224,13 @@ Route::middleware(['auth:sanctum', 'session.timeout'])->group(function () {
             |--------------------------------------------------------------------------
             */
             Route::post('review', [StoreReviewApiController::class, 'store']);
+
+            /*
+            |--------------------------------------------------------------------------
+            | CATEGORY REVIEW APIs
+            |--------------------------------------------------------------------------
+            */
+            Route::post('category-review', [StoreCategoryReviewApiController::class, 'store']);
 
             /*
             |--------------------------------------------------------------------------
