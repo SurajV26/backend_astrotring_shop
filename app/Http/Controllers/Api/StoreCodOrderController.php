@@ -181,7 +181,7 @@ class StoreCodOrderController extends Controller
                 $deliveryCharge = $subtotal >= 800 ? 0 : (float) $deliveryRate->delivery_charge;
             }
 
-            $codCharge = env('COD_CHARGE', 499);
+            $codCharge = config('services.cod_charge');
 
             $walletUsed = 0;
 
@@ -469,7 +469,7 @@ class StoreCodOrderController extends Controller
 
             'status' => true,
 
-            'cod_charge' => (float) env('COD_CHARGE', 49)
+            'cod_charge' => (float) config('services.cod_charge')
         ]);
     }
     
