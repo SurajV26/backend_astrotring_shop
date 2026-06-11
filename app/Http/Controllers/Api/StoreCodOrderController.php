@@ -283,13 +283,35 @@ class StoreCodOrderController extends Controller
                 ]
             ]);
 
+            $start = (int) env('INVOICE_START_NUMBER', 1);
+
+            $usedNumbers = Order::whereNotNull('invoice_sequence')
+                ->orderBy('invoice_sequence')
+                ->pluck('invoice_sequence')
+                ->toArray();
+
+            $nextInvoiceSequence = $start;
+
+            foreach ($usedNumbers as $number) {
+
+                if ($number == $nextInvoiceSequence) {
+
+                    $nextInvoiceSequence++;
+
+                } elseif ($number > $nextInvoiceSequence) {
+
+                    break;
+                }
+            }
+
             $order = Order::create([
                 'user_id' => $user->id,
                 'user_name' => $user->name,
                 'coupon_id' => $couponId,
                 'payment_id' => $payment->id,
                 'order_number' => 'ORD-' . strtoupper(uniqid()),
-                'invoice_number' => null,
+                'invoice_sequence' => $nextInvoiceSequence,
+                'invoice_number' => 'AT-COD-' . str_pad($nextInvoiceSequence, 4, '0', STR_PAD_LEFT),
                 'hsn_code' => $hsnCode,
                 'subtotal' => $subtotal,
                 'discount' => $discount,
@@ -353,10 +375,6 @@ class StoreCodOrderController extends Controller
                     'status' => 'delivery_pending',
                 ]);
             }
-
-            $order->invoice_number = 'AT-COD-' . str_pad($order->id, 4, '0', STR_PAD_LEFT);
-
-            $order->save();
 
             $payment->update([
                 'order_id' => $order->id

@@ -34,6 +34,7 @@ class Order extends Model
         'awb_code',
         'courier_name',
         'shipping_status',
+        'invoice_sequence',
         'invoice_number',
         'coupon_id',
         'payment_id',

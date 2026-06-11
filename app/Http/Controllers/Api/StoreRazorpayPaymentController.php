@@ -539,14 +539,36 @@ class StoreRazorpayPaymentController extends Controller
                 ]);
             }
 
+            $start = (int) env('INVOICE_START_NUMBER', 1);
+
+            $usedNumbers = Order::whereNotNull('invoice_sequence')
+                ->orderBy('invoice_sequence')
+                ->pluck('invoice_sequence')
+                ->toArray();
+
+            $nextInvoiceSequence = $start;
+
+            foreach ($usedNumbers as $number) {
+
+                if ($number == $nextInvoiceSequence) {
+
+                    $nextInvoiceSequence++;
+
+                } elseif ($number > $nextInvoiceSequence) {
+
+                    break;
+                }
+            }
+
             $order = Order::create([
                 'user_id' => $user->id,
                 'user_name' => $user->name,
                 'coupon_id' => $couponId,
                 'payment_id' => $payment ? $payment->id : null,
                 'order_number' => 'ORD-' . strtoupper(uniqid()),
+                'invoice_sequence' => $nextInvoiceSequence,
+                'invoice_number' => 'AT-' . str_pad($nextInvoiceSequence, 4, '0', STR_PAD_LEFT),
                 'hsn_code' => $hsnCode,
-
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'wallet_used' => $walletUsed,
@@ -613,11 +635,6 @@ class StoreRazorpayPaymentController extends Controller
                     'status' => 'delivery_pending',
                 ]);
             }
-
-            $invoiceNumber = 'AT-' . str_pad($order->id, 4, '0', STR_PAD_LEFT);
-
-            $order->invoice_number = $invoiceNumber;
-            $order->save();
 
             $walletTransaction = null;
 

@@ -33,6 +33,7 @@ return new class extends Migration
             $table->string('courier_name')->nullable();
             $table->string('shipping_status')->default('pending');
 
+            $table->unsignedBigInteger('invoice_sequence')->nullable()->unique();
             $table->string('invoice_number')->nullable()->unique();
             $table->string('order_number')->unique();
             $table->string('hsn_code')->nullable();
