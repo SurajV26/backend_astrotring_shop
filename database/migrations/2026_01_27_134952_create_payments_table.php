@@ -18,7 +18,7 @@ return new class extends Migration
             $table->enum('platform', ['astrotring', 'astrotring_store']);
             $table->string('order_id')->nullable()->index();
             // $table->string('payment_gateway')->default('razorpay');
-            $table->enum('payment_gateway', ['razorpay', 'sbi', 'cod']);
+            $table->enum('payment_gateway', ['razorpay', 'sbi', 'cod', 'cod_advance_paid']);
             $table->string('transaction_id')->nullable()->index();
             $table->decimal('amount', 12, 2);
             $table->string('currency')->default('INR');

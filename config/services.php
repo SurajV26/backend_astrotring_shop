@@ -45,4 +45,5 @@ return [
     ],
 
     'cod_charge' => env('COD_CHARGE', 49),
+    'cod_advance_amount' => env('COD_ADVANCE_AMOUNT', 199),
 ];
