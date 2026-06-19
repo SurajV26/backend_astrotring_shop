@@ -149,12 +149,13 @@ Route::middleware(['auth:sanctum', 'session.timeout'])->group(function () {
 
     // store
     Route::prefix('store')->group(function () {
-        Route::post('/place-cod-order', [StoreCodOrderController::class, 'placeOrder']);
+        Route::post('/cod/create-order', [StoreCodOrderController::class, 'createCodOrder']);
+        Route::post('/cod/verify-payment', [StoreCodOrderController::class, 'verifyCodPayment']);
+        Route::get('/cod-charge', [StoreCodOrderController::class, 'getCodCharge']);
+        Route::post('/cod/cancel/{id}', [StoreCodOrderController::class, 'cancelCodOrder']);
         Route::post('/create-order', [StoreRazorpayPaymentController::class, 'createOrder']);
         Route::post('/verify-payment', [StoreRazorpayPaymentController::class, 'verify']);
-        Route::get('/cod-charge',[StoreCodOrderController::class, 'getCodCharge']);
-        Route::post('/cod/cancel/{id}', [StoreCodOrderController::class, 'cancelCodOrder']);
-        Route::post('/calculate-summary',[StoreRazorpayPaymentController::class, 'calculateSummary']);
+        Route::post('/calculate-summary', [StoreRazorpayPaymentController::class, 'calculateSummary']);
         Route::post('/order/cancel/{id}', [StoreRazorpayPaymentController::class, 'cancelOrder']);
         Route::get('/order/{id}', [StoreRazorpayPaymentController::class, 'orderDetails']);
     });

@@ -216,20 +216,30 @@ class OrderApiController extends Controller
             'pricing' => [
                 'subtotal' => $order->subtotal,
                 'discount' => $order->discount,
-                // GST
+
                 'taxable_amount' => $order->taxable_amount,
                 'gst_rate' => $order->gst_rate,
                 'tax_type' => $order->tax_type,
                 'cgst_amount' => $order->cgst_amount,
                 'sgst_amount' => $order->sgst_amount,
                 'igst_amount' => $order->igst_amount,
-                // OTHER
+
                 'delivery_charge' => $order->delivery_charge,
+
                 'cod_charge' => (float) (
                     $order->price_breakdown['cod_charge'] ?? 0
                 ),
+
                 'wallet_used' => $order->wallet_used,
+
                 'paid_amount' => $order->paid_amount,
+
+                'advance_paid_amount' => $order->advance_paid_amount,
+
+                'remaining_cod_amount' => $order->remaining_cod_amount,
+
+                'is_cod_advance' => (bool) $order->is_cod_advance,
+
                 'total_amount' => $order->total_amount,
             ],
 
@@ -239,6 +249,8 @@ class OrderApiController extends Controller
                 'transaction_id' => $order->payment->transaction_id,
                 'gateway' => $order->payment->payment_gateway,
                 'mode' => $order->payment->payment_mode,
+                'advance_paid_amount' => $order->advance_paid_amount,
+                'remaining_cod_amount' => $order->remaining_cod_amount,
                 'amount' => $order->payment->amount,
                 'currency' => $order->payment->currency,
                 'status' => $order->payment->payment_status,

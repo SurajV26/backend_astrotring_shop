@@ -301,6 +301,28 @@
                             ₹ {{ number_format($order->payment->amount ?? 0, 2) }}
                         </div>
 
+                        @if ($order->is_cod_advance)
+                            <div class="mb-3">
+                                <small class="text-muted d-block">
+                                    Advance Paid
+                                </small>
+
+                                <strong class="text-success">
+                                    ₹ {{ number_format($order->advance_paid_amount ?? 0, 2) }}
+                                </strong>
+                            </div>
+
+                            <div class="mb-3">
+                                <small class="text-muted d-block">
+                                    Remaining COD Amount
+                                </small>
+
+                                <strong class="text-danger">
+                                    ₹ {{ number_format($order->remaining_cod_amount ?? 0, 2) }}
+                                </strong>
+                            </div>
+                        @endif
+
                         <span class="badge bg-success">
                             {{ strtoupper($order->payment->payment_status ?? 'success') }}
                         </span>
@@ -428,6 +450,16 @@
                         </strong>
                     </div>
 
+                    @if (isset($order->price_breakdown['cod_charge']))
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>COD Charge</span>
+
+                            <strong>
+                                ₹ {{ number_format($order->price_breakdown['cod_charge'], 2) }}
+                            </strong>
+                        </div>
+                    @endif
+
                     <div class="d-flex justify-content-between mb-2">
                         <span>Wallet Used</span>
 
@@ -443,6 +475,24 @@
                             ₹ {{ number_format($order->paid_amount ?? 0, 2) }}
                         </strong>
                     </div>
+
+                    @if ($order->is_cod_advance)
+                        <div class="d-flex justify-content-between mb-2 text-success">
+                            <span>Advance Paid</span>
+
+                            <strong>
+                                ₹ {{ number_format($order->advance_paid_amount ?? 0, 2) }}
+                            </strong>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2 text-danger">
+                            <span>Remaining COD</span>
+
+                            <strong>
+                                ₹ {{ number_format($order->remaining_cod_amount ?? 0, 2) }}
+                            </strong>
+                        </div>
+                    @endif
 
                     <hr>
 

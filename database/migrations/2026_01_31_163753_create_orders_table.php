@@ -52,6 +52,9 @@ return new class extends Migration
             $table->string('tax_type')->nullable();
 
             $table->decimal('wallet_used', 10, 2)->default(0);
+            $table->decimal('advance_paid_amount', 10, 2)->default(0);
+            $table->decimal('remaining_cod_amount', 10, 2)->default(0);
+            $table->boolean('is_cod_advance')->default(false);
             $table->decimal('paid_amount', 10, 2)->default(0);
 
             $table->decimal('total_amount', 10, 2);
