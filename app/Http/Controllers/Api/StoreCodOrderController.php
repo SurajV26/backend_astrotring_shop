@@ -428,6 +428,46 @@ class StoreCodOrderController extends Controller
 
             $hsnCode = implode(',', $hsnCodes);
 
+            $shippingGstRate = 18;
+            $shippingTaxable = 0;
+            $shippingTax = 0;
+
+            if ($deliveryCharge > 0) {
+
+                $shippingTaxable = round(
+                    ($deliveryCharge * 100) / (100 + $shippingGstRate),
+                    2
+                );
+
+                $shippingTax = round(
+                    $deliveryCharge - $shippingTaxable,
+                    2
+                );
+
+                $taxableAmount += $shippingTaxable;
+                $totalTax += $shippingTax;
+            }
+
+            $codGstRate = 18;
+            $codTaxable = 0;
+            $codTax = 0;
+
+            if ($codCharge > 0) {
+
+                $codTaxable = round(
+                    ($codCharge * 100) / (100 + $codGstRate),
+                    2
+                );
+
+                $codTax = round(
+                    $codCharge - $codTaxable,
+                    2
+                );
+
+                $taxableAmount += $codTaxable;
+                $totalTax += $codTax;
+            }
+
             $cgstAmount = 0;
             $sgstAmount = 0;
             $igstAmount = 0;
@@ -537,10 +577,16 @@ class StoreCodOrderController extends Controller
                 'price_breakdown' => [
                     'subtotal' => $subtotal,
                     'coupon_discount' => $discount,
+                    'delivery_charge' => $deliveryCharge,
+                    'shipping_gst_rate' => $shippingGstRate,
+                    'shipping_gst_amount' => $shippingTax,
+                    'shipping_taxable_amount' => $shippingTaxable,
+                    'cod_charge' => $codCharge,
+                    'cod_gst_rate' => $codGstRate,
+                    'cod_gst_amount' => $codTax,
+                    'cod_taxable_amount' => $codTaxable,
                     'advance_amount' => $advanceAmount,
                     'remaining_cod_amount' => $remainingCodAmount,
-                    'delivery_charge' => $deliveryCharge,
-                    'cod_charge' => $codCharge,
                     'taxable_amount' => $taxableAmount,
                     'gst_rate' => $gstRate,
                     'tax_type' => $taxType,

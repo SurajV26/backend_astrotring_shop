@@ -501,6 +501,26 @@ class StoreRazorpayPaymentController extends Controller
             $sgstAmount = 0;
             $igstAmount = 0;
 
+            $shippingGstRate = 18;
+            $shippingTaxable = 0;
+            $shippingTax = 0;
+
+            if ($deliveryCharge > 0) {
+
+                $shippingTaxable = round(
+                    ($deliveryCharge * 100) / (100 + $shippingGstRate),
+                    2
+                );
+
+                $shippingTax = round(
+                    $deliveryCharge - $shippingTaxable,
+                    2
+                );
+
+                $taxableAmount += $shippingTaxable;
+                $totalTax += $shippingTax;
+            }
+
             $taxType = null;
 
             if (
@@ -580,6 +600,9 @@ class StoreRazorpayPaymentController extends Controller
                     'subtotal' => $subtotal,
                     'coupon_discount' => $discount,
                     'delivery_charge' => $deliveryCharge,
+                    'shipping_gst_rate' => $shippingGstRate,
+                    'shipping_gst_amount' => $shippingTax,
+                    'shipping_taxable_amount' => $shippingTaxable,
                     'wallet_used' => $walletUsed,
                     'taxable_amount' => $taxableAmount,
                     'gst_rate' => $gstRate,

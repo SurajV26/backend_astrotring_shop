@@ -230,6 +230,18 @@ class OrderApiController extends Controller
                     $order->price_breakdown['cod_charge'] ?? 0
                 ),
 
+                'shipping_gst_rate' =>
+                    $order->price_breakdown['shipping_gst_rate'] ?? 18,
+
+                'shipping_gst_amount' =>
+                    $order->price_breakdown['shipping_gst_amount'] ?? 0,
+
+                'cod_gst_rate' =>
+                    $order->price_breakdown['cod_gst_rate'] ?? 18,
+
+                'cod_gst_amount' =>
+                    $order->price_breakdown['cod_gst_amount'] ?? 0,
+
                 'wallet_used' => $order->wallet_used,
 
                 'paid_amount' => $order->paid_amount,
