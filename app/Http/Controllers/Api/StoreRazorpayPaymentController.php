@@ -448,9 +448,11 @@ class StoreRazorpayPaymentController extends Controller
 
             $sellerState = 'Delhi';
 
-            $totalTax = 0;
+            $productTax = 0;
+            $productTaxableAmount = 0;
 
-            $taxableAmount = 0;
+            $shippingTax = 0;
+            $shippingTaxable = 0;
 
             $gstRate = 0;
 
@@ -475,19 +477,18 @@ class StoreRazorpayPaymentController extends Controller
                 }
 
                 // TAX CALCULATION
-                $itemTaxableAmount = round(
-                    ($itemTotal * 100) / (100 + $itemGstRate),
-                    2
-                );
-
                 $itemTax = round(
-                    $itemTotal - $itemTaxableAmount,
+                    ($itemTotal * $itemGstRate) / 100,
                     2
                 );
 
-                $taxableAmount += $itemTaxableAmount;
+                $itemTaxableAmount = round(
+                    $itemTotal - $itemTax,
+                    2
+                );
 
-                $totalTax += $itemTax;
+                $productTaxableAmount += $itemTaxableAmount;
+                $productTax += $itemTax;
 
                 // SAVE GST RATE
                 $gstRate = $itemGstRate;
@@ -507,36 +508,49 @@ class StoreRazorpayPaymentController extends Controller
 
             if ($deliveryCharge > 0) {
 
-                $shippingTaxable = round(
-                    ($deliveryCharge * 100) / (100 + $shippingGstRate),
-                    2
-                );
-
                 $shippingTax = round(
-                    $deliveryCharge - $shippingTaxable,
+                    ($deliveryCharge * $shippingGstRate) / 100,
                     2
                 );
 
-                $taxableAmount += $shippingTaxable;
-                $totalTax += $shippingTax;
+                $shippingTaxable = round(
+                    $deliveryCharge - $shippingTax,
+                    2
+                );
+
             }
+
+            $productCgstAmount = 0;
+            $productSgstAmount = 0;
+            $productIgstAmount = 0;
+
+            $shippingCgstAmount = 0;
+            $shippingSgstAmount = 0;
+            $shippingIgstAmount = 0;
 
             $taxType = null;
 
             if (
                 $address &&
-                strtolower(trim($address->state)) ==
-                strtolower(trim($sellerState))
-            ){
+                strtolower(trim($address->state))
+                    == strtolower(trim($sellerState))
+            ) {
+
                 $taxType = 'cgst_sgst';
-                $cgstAmount = round($totalTax / 2, 2);
-                $sgstAmount = round($totalTax / 2, 2);
+
+                $productCgstAmount = round($productTax / 2, 2);
+                $productSgstAmount = round($productTax / 2, 2);
+
+                $shippingCgstAmount = round($shippingTax / 2, 2);
+                $shippingSgstAmount = round($shippingTax / 2, 2);
 
             } else {
 
                 $taxType = 'igst';
 
-                $igstAmount = $totalTax;
+                $productIgstAmount = $productTax;
+
+                $shippingIgstAmount = $shippingTax;
             }
 
             foreach ($items as $item) {
@@ -603,13 +617,23 @@ class StoreRazorpayPaymentController extends Controller
                     'shipping_gst_rate' => $shippingGstRate,
                     'shipping_gst_amount' => $shippingTax,
                     'shipping_taxable_amount' => $shippingTaxable,
+                    'product_gst_amount' => $productTax,
+                    'product_taxable_amount' => $productTaxableAmount,
+
+                    'product_cgst_amount' => $productCgstAmount,
+                    'product_sgst_amount' => $productSgstAmount,
+                    'product_igst_amount' => $productIgstAmount,
+
+                    'shipping_cgst_amount' => $shippingCgstAmount,
+                    'shipping_sgst_amount' => $shippingSgstAmount,
+                    'shipping_igst_amount' => $shippingIgstAmount,
                     'wallet_used' => $walletUsed,
-                    'taxable_amount' => $taxableAmount,
+                    'taxable_amount' => $productTaxableAmount + $shippingTaxable,
                     'gst_rate' => $gstRate,
                     'tax_type' => $taxType,
-                    'cgst_amount' => $cgstAmount,
-                    'sgst_amount' => $sgstAmount,
-                    'igst_amount' => $igstAmount,
+                    'cgst_amount' => $productCgstAmount,
+                    'sgst_amount' => $productSgstAmount,
+                    'igst_amount' => $productIgstAmount,
                     'paid_online' => $finalAmount,  
                     'final_amount' => ($afterDiscount + $deliveryCharge)
                 ],
@@ -625,11 +649,11 @@ class StoreRazorpayPaymentController extends Controller
                 'state' => $address->state ?? null,
                 'address' => $address->address ?? null,
                 'pincode' => $address->pincode ?? null,
-                'taxable_amount' => $taxableAmount,
+                'taxable_amount' => $productTaxableAmount + $shippingTaxable,
                 'gst_rate' => $gstRate,
-                'cgst_amount' => $cgstAmount,
-                'sgst_amount' => $sgstAmount,
-                'igst_amount' => $igstAmount,
+                'cgst_amount' => $productCgstAmount,
+                'sgst_amount' => $productSgstAmount,
+                'igst_amount' => $productIgstAmount,
                 'tax_type' => $taxType,
 
                 'status' => 'paid',
@@ -751,12 +775,12 @@ class StoreRazorpayPaymentController extends Controller
                     'pricing' => [
                         'subtotal' => $subtotal,
                         'discount' => $discount,
-                        'taxable_amount' => $taxableAmount,
+                        'taxable_amount' => $productTaxableAmount + $shippingTaxable,
                         'gst_rate' => $gstRate,
                         'tax_type' => $taxType,
-                        'cgst_amount' => $cgstAmount,
-                        'sgst_amount' => $sgstAmount,
-                        'igst_amount' => $igstAmount,
+                        'cgst_amount' => $productCgstAmount,
+                        'sgst_amount' => $productSgstAmount,
+                        'igst_amount' => $productIgstAmount,
                         'wallet_used' => $walletUsed,
                         'delivery_charge' => $deliveryCharge,
                         'paid_online' => $finalAmount,
