@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Validation\ValidationException;
+use Razorpay\Api\Api;
 use App\Models\AlternativeAddress;
 use App\Models\EmployeeCommission;
 use App\Models\Cart;
@@ -20,10 +21,8 @@ use App\Models\Product;
 
 class StoreCodOrderController extends Controller
 {
-    public function placeOrder(Request $request)
+    public function createCodOrder(Request $request)
     {
-        DB::beginTransaction();
-
         try {
 
             $user = $request->user();
@@ -32,6 +31,204 @@ class StoreCodOrderController extends Controller
                 'coupon_code' => 'nullable|string',
                 'address_id' => 'required|exists:alternative_addresses,id',
             ]);
+
+            $address = AlternativeAddress::where('id', $request->address_id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (!$address) {
+                throw new \Exception('Invalid delivery address');
+            }
+
+            $cart = Cart::where('user_id', $user->id)->first();
+
+            if (!$cart) {
+                throw new \Exception('Cart not found');
+            }
+
+            $items = CartItem::where('cart_id', $cart->id)->get();
+
+            if ($items->isEmpty()) {
+                throw new \Exception('Cart empty');
+            }
+
+            $productIds = $items->pluck('product_id')->unique();
+
+            $products = Product::whereIn('id', $productIds)
+                ->get()
+                ->keyBy('id');
+
+            $subtotal = 0;
+
+            foreach ($items as $item) {
+
+                $product = $products[$item->product_id] ?? null;
+
+                if (!$product) {
+                    throw new \Exception('Product removed from store');
+                }
+
+                if ($product->stock_qty < $item->quantity) {
+                    throw new \Exception(
+                        $product->name . ' only ' . $product->stock_qty . ' left in stock'
+                    );
+                }
+
+                $subtotal += $item->total_price;
+            }
+
+            $discount = 0;
+
+            if ($request->coupon_code) {
+
+                $coupon = Coupon::where('code', $request->coupon_code)
+                    ->where('status', 1)
+                    ->whereDate('expiry_date', '>=', now())
+                    ->first();
+
+                if (!$coupon) {
+                    throw new \Exception('Invalid coupon');
+                }
+
+                if (
+                    $coupon->min_amount &&
+                    $subtotal < $coupon->min_amount
+                ) {
+                    throw new \Exception('Coupon minimum amount not met');
+                }
+
+                if ($coupon->discount_type == 'flat') {
+
+                    $discount = (float) $coupon->discount_value;
+
+                } else {
+
+                    $discount =
+                        ($subtotal * $coupon->discount_value) / 100;
+
+                    if ($coupon->max_discount) {
+                        $discount = min(
+                            $discount,
+                            $coupon->max_discount
+                        );
+                    }
+                }
+            }
+
+            $afterDiscount = max(0, $subtotal - $discount);
+
+            $deliveryCharge = 0;
+
+            $deliveryRate = DeliveryRate::where('state', $address->state)
+                ->where('status', 1)
+                ->first();
+
+            if ($deliveryRate) {
+                $deliveryCharge =
+                    $subtotal >= 800
+                        ? 0
+                        : (float) $deliveryRate->delivery_charge;
+            }
+
+            $codCharge = config('services.cod_charge');
+
+            $finalAmount =
+                $afterDiscount +
+                $deliveryCharge +
+                $codCharge;
+
+            $advanceAmount = min(
+                (float) config('services.cod_advance_amount'),
+                $finalAmount
+            );
+
+            $remainingCodAmount =
+                $finalAmount - $advanceAmount;
+
+            $api = new Api(
+                env('RAZORPAY_KEY'),
+                env('RAZORPAY_SECRET')
+            );
+
+            $razorpayOrder = $api->order->create([
+                'receipt' => 'cod_' . uniqid(),
+                'amount' => (int) round($advanceAmount * 100),
+                'currency' => 'INR',
+
+                'notes' => [
+                    'user_id' => $user->id,
+                    'address_id' => $request->address_id,
+                    'coupon_code' => $request->coupon_code,
+                    'advance_amount' => $advanceAmount,
+                    'remaining_cod_amount' => $remainingCodAmount,
+                    'total_amount' => $finalAmount,
+                ]
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'payment_required' => true,
+
+                'razorpay_order_id' => $razorpayOrder['id'],
+
+                'pricing' => [
+                    'subtotal' => $subtotal,
+                    'discount' => $discount,
+                    'delivery_charge' => $deliveryCharge,
+                    'cod_charge' => $codCharge,
+                    'advance_amount' => $advanceAmount,
+                    'remaining_cod_amount' => $remainingCodAmount,
+                    'final_amount' => $finalAmount,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+
+            Log::error('COD CREATE ORDER ERROR', [
+                'message' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    public function verifyCodPayment(Request $request)
+    {
+        DB::beginTransaction();
+
+        try {
+
+            $user = $request->user();
+
+            $request->validate([
+                'razorpay_order_id'   => 'required|string',
+                'razorpay_payment_id' => 'required|string',
+                'razorpay_signature'  => 'required|string',
+                'coupon_code'         => 'nullable|string',
+                'address_id'          => 'required|exists:alternative_addresses,id',
+            ]);
+
+            $api = new Api(
+                env('RAZORPAY_KEY'),
+                env('RAZORPAY_SECRET')
+            );
+
+            $api->utility->verifyPaymentSignature([
+                'razorpay_order_id'   => $request->razorpay_order_id,
+                'razorpay_payment_id' => $request->razorpay_payment_id,
+                'razorpay_signature'  => $request->razorpay_signature,
+            ]);
+
+            $paymentDetails = $api->payment->fetch(
+                $request->razorpay_payment_id
+            );
+
+            if (($paymentDetails['status'] ?? '') !== 'captured') {
+                throw new \Exception('Payment not captured');
+            }
 
             $address = AlternativeAddress::where('id', $request->address_id)
                 ->where('user_id', $user->id)
@@ -227,50 +424,53 @@ class StoreCodOrderController extends Controller
                     2
                 );
 
-                $productTax += $itemTax;
                 $productTaxableAmount += $itemTaxableAmount;
+                $productTax += $itemTax;
 
                 $gstRate = $itemGstRate;
             }
 
             $hsnCodes = array_unique($hsnCodes);
 
+            $hsnCode = implode(',', $hsnCodes);
+
             $shippingGstRate = 18;
+            $shippingTaxable = 0;
+            $shippingTax = 0;
 
-            $shippingTax = round(
-                ($deliveryCharge * $shippingGstRate) / 100,
-                2
-            );
+            if ($deliveryCharge > 0) {
 
-            $shippingTaxable = round(
-                $deliveryCharge - $shippingTax,
-                2
-            );
+                $shippingTax = round(
+                    ($deliveryCharge * $shippingGstRate) / 100,
+                    2
+                );
+
+                $shippingTaxable = round(
+                    $deliveryCharge - $shippingTax,
+                    2
+                );
+            }
 
             $codGstRate = 18;
+            $codTaxable = 0;
+            $codTax = 0;
 
-            $codTax = round(
-                ($codCharge * $codGstRate) / 100,
-                2
-            );
+            if ($codCharge > 0) {
 
-            $codTaxable = round(
-                $codCharge - $codTax,
-                2
-            );
+                $codTax = round(
+                    ($codCharge * $codGstRate) / 100,
+                    2
+                );
 
-            $taxableAmount =
-                $productTaxableAmount +
-                $shippingTaxable +
-                $codTaxable;
-
-            $hsnCode = implode(',', $hsnCodes);
+                $codTaxable = round(
+                    $codCharge - $codTax,
+                    2
+                );
+            }
 
             $cgstAmount = 0;
             $sgstAmount = 0;
             $igstAmount = 0;
-
-            $taxType = null;
 
             $productCgstAmount = 0;
             $productSgstAmount = 0;
@@ -284,8 +484,16 @@ class StoreCodOrderController extends Controller
             $codSgstAmount = 0;
             $codIgstAmount = 0;
 
+            $taxableAmount =
+                $productTaxableAmount +
+                $shippingTaxable +
+                $codTaxable;
+
+            $taxType = null;
+
             if (
-                strtolower(trim($address->state)) ==
+                strtolower(trim($address->state))
+                ==
                 strtolower(trim($sellerState))
             ) {
 
@@ -311,28 +519,24 @@ class StoreCodOrderController extends Controller
                 $codIgstAmount = $codTax;
             }
 
-            $cgstAmount =
-                $productCgstAmount +
-                $shippingCgstAmount +
-                $codCgstAmount;
+            $advanceAmount = min(
+                (float) config('services.cod_advance_amount'),
+                $finalAmount
+            );
 
-            $sgstAmount =
-                $productSgstAmount +
-                $shippingSgstAmount +
-                $codSgstAmount;
+            $remainingCodAmount = $finalAmount - $advanceAmount;
 
-            $igstAmount =
-                $productIgstAmount +
-                $shippingIgstAmount +
-                $codIgstAmount;
+            if (round($paymentDetails['amount'] / 100, 2) != round($advanceAmount, 2)) {
+                throw new \Exception('Invalid advance payment amount');
+            }
 
             $payment = Payment::create([
                 'user_id' => $user->id,
                 'platform' => 'astrotring_store',
                 'order_id' => null,
-                'payment_gateway' => 'cod',
-                'transaction_id' => 'COD-' . strtoupper(uniqid()),
-                'amount' => $finalAmount,
+                'payment_gateway' => 'cod_advance_paid',
+                'transaction_id' => $request->razorpay_payment_id,
+                'amount' => $advanceAmount,
                 'currency' => 'INR',
                 'payment_status' => 'success',
                 'payment_mode' => 'cod',
@@ -347,10 +551,14 @@ class StoreCodOrderController extends Controller
                     'discount' => $discount,
                     'delivery_charge' => $deliveryCharge,
                     'cod_charge' => $codCharge,
+                    'advance_amount' => $advanceAmount,
+                    'remaining_cod_amount' => $remainingCodAmount,
                     'final_amount' => $finalAmount,
                 ],
                 'payment_response_data' => [
-                    'type' => 'cash_on_delivery'
+                    'type' => 'cod_advance_payment',
+                    'razorpay_order_id' => $request->razorpay_order_id,
+                    'razorpay_payment_id' => $request->razorpay_payment_id,
                 ]
             ]);
 
@@ -388,23 +596,23 @@ class StoreCodOrderController extends Controller
                 'discount' => $discount,
                 'wallet_used' => 0,
                 'delivery_charge' => $deliveryCharge,
-                'paid_amount' => 0,
+                'paid_amount' => $advanceAmount,
                 'total_amount' => $finalAmount,
+                'advance_paid_amount' => $advanceAmount,
+                'remaining_cod_amount' => $remainingCodAmount,
+                'is_cod_advance' => true,
                 'price_breakdown' => [
                     'subtotal' => $subtotal,
                     'coupon_discount' => $discount,
                     'delivery_charge' => $deliveryCharge,
-                    'cod_charge' => $codCharge,
-                    'taxable_amount' => $taxableAmount,
+                    'shipping_gst_rate' => $shippingGstRate,
+
                     'product_gst_amount' => $productTax,
                     'product_taxable_amount' => $productTaxableAmount,
 
-                    'shipping_gst_rate' => $shippingGstRate,
                     'shipping_gst_amount' => $shippingTax,
                     'shipping_taxable_amount' => $shippingTaxable,
 
-                    'cod_charge' => $codCharge,
-                    'cod_gst_rate' => $codGstRate,
                     'cod_gst_amount' => $codTax,
                     'cod_taxable_amount' => $codTaxable,
 
@@ -419,14 +627,16 @@ class StoreCodOrderController extends Controller
                     'cod_cgst_amount' => $codCgstAmount,
                     'cod_sgst_amount' => $codSgstAmount,
                     'cod_igst_amount' => $codIgstAmount,
-
+                    'cod_charge' => $codCharge,
+                    'cod_gst_rate' => $codGstRate,
+                    'advance_amount' => $advanceAmount,
+                    'remaining_cod_amount' => $remainingCodAmount,
                     'taxable_amount' => $taxableAmount,
                     'gst_rate' => $gstRate,
                     'tax_type' => $taxType,
-
-                    'cgst_amount' => $cgstAmount,
-                    'sgst_amount' => $sgstAmount,
-                    'igst_amount' => $igstAmount,
+                    'cgst_amount' => $productCgstAmount,
+                    'sgst_amount' => $productSgstAmount,
+                    'igst_amount' => $productIgstAmount,
                     'final_amount' => $finalAmount,
                 ],
                 'address_id' => $address->id,
@@ -441,13 +651,13 @@ class StoreCodOrderController extends Controller
                 'pincode' => $address->pincode,
                 'taxable_amount' => $taxableAmount,
                 'gst_rate' => $gstRate,
-                'cgst_amount' => $cgstAmount,
-                'sgst_amount' => $sgstAmount,
-                'igst_amount' => $igstAmount,
+                'cgst_amount' => $productCgstAmount,
+                'sgst_amount' => $productSgstAmount,
+                'igst_amount' => $productIgstAmount,
                 'tax_type' => $taxType,
                 'status' => 'pending',
                 'shipping_status' => 'pending',
-                'paid_at' => null,
+                'paid_at' => now(),
             ]);
 
             if (
@@ -525,9 +735,12 @@ class StoreCodOrderController extends Controller
                 $itemIgst = 0;
 
                 if ($taxType == 'cgst_sgst') {
+
                     $itemCgst = round($itemTax / 2, 2);
                     $itemSgst = round($itemTax / 2, 2);
+
                 } else {
+
                     $itemIgst = $itemTax;
                 }
                 OrderItem::create([
@@ -547,11 +760,9 @@ class StoreCodOrderController extends Controller
                     'gst_rate' => $itemGstRate,
                     'gst_amount' => $itemTax,
                     'taxable_amount' => $itemTaxableAmount,
-
                     'cgst_amount' => $itemCgst,
                     'sgst_amount' => $itemSgst,
                     'igst_amount' => $itemIgst,
-
                     'tax_type' => $taxType,
                     'hsn_code' => $product->hsn_code,
                 ]);
@@ -584,56 +795,33 @@ class StoreCodOrderController extends Controller
                     'status' => $order->status,
                     'payment_status' => $payment->payment_status,
                     'payment_mode' => $payment->payment_mode,
-                    'pricing' => $order->price_breakdown,
-                    'items' => $order->items->map(function ($item) {
-
-                        return [
-
-                            'product_id' => $item->product_id,
-
-                            'name' => $item->product_name,
-
-                            'slug' => $item->product_slug,
-
-                            'image' => $item->product_image,
-
-                            'quantity' => $item->quantity,
-
-                            'price' => $item->price,
-
-                            'total' => $item->total,
-
-                            'hsn_code' => $item->hsn_code,
-
-                            'gst_rate' => $item->gst_rate,
-
-                            'gst_amount' => $item->gst_amount,
-
-                            'taxable_amount' => $item->taxable_amount,
-
-                            'cgst_amount' => $item->cgst_amount,
-
-                            'sgst_amount' => $item->sgst_amount,
-
-                            'igst_amount' => $item->igst_amount,
-
-                            'tax_type' => $item->tax_type,
-
-                            'weight' => $item->weight,
-
-                            'length' => $item->length,
-
-                            'breadth' => $item->breadth,
-
-                            'height' => $item->height,
-                        ];
-
-                    }),
+                    'pricing' => [
+                        'subtotal' => $subtotal,
+                        'discount' => $discount,
+                        'delivery_charge' => $deliveryCharge,
+                        'cod_charge' => $codCharge,
+                        'advance_amount' => $advanceAmount,
+                        'remaining_cod_amount' => $remainingCodAmount,
+                        'final_amount' => $finalAmount,
+                    ],
+                    'items' => $order->items
                 ]
             ]);
 
-        } catch (\Exception $e) {
+        } catch (ValidationException $e) {
+
             DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
             Log::error('COD ORDER ERROR', [
                 'message' => $e->getMessage(),
                 'line' => $e->getLine(),

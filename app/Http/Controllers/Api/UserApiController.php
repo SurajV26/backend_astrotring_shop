@@ -71,34 +71,34 @@ class UserApiController extends Controller
                 'status' => 1,
             ]);
 
-            $otp = random_int(100000, 999999);
+            // $otp = random_int(100000, 999999);
 
-            $user->update([
-                'otp' => $otp,
-                'otp_created_at' => now(),
-                'last_otp_sent_at' => now(),
-            ]);
+            // $user->update([
+            //     'otp' => $otp,
+            //     'otp_created_at' => now(),
+            //     'last_otp_sent_at' => now(),
+            // ]);
 
-            $response = $this->sendOtpSms($request->mobile, $otp);
+            // // $response = $this->sendOtpSms($request->mobile, $otp);
 
-            $responseData = $response->json();
+            // $responseData = $response->json();
 
-            if (
-                !$response->successful() ||
-                !isset($responseData['code']) ||
-                $responseData['code'] != '6001'
-            ) {
+            // if (
+            //     !$response->successful() ||
+            //     !isset($responseData['code']) ||
+            //     $responseData['code'] != '6001'
+            // ) {
 
-                $user->delete();
+            //     $user->delete();
 
-                DB::rollBack();
+            //     DB::rollBack();
 
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Failed to send OTP',
-                    'sms_response' => $response->body(),
-                ], 500);
-            }
+            //     return response()->json([
+            //         'status' => false,
+            //         'message' => 'Failed to send OTP',
+            //         'sms_response' => $response->body(),
+            //     ], 500);
+            // }
 
             if ($request->filled('profile_image')) {
 
@@ -121,7 +121,7 @@ class UserApiController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'OTP sent successfully for verification',
+                'message' => 'Registration successful. Please login to continue.',
             ]);
 
         } catch (\Throwable $e) {
