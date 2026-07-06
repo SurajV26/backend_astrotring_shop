@@ -154,11 +154,47 @@ class UserApiController extends Controller
 
         if (!$user) {
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Account not found',
-                'new_user' => true
-            ], 404);
+            DB::beginTransaction();
+
+            try {
+
+                $username = $request->mobile;
+
+                if (User::where('username', $username)->exists()) {
+                    $username .= rand(100,999);
+                }
+
+                $user = User::create([
+                    'type' => 'user',
+                    'role_id' => 3,
+                    'code' => $this->generateUserCode('User'),
+                    'terms_accepted' => 1,
+                    'name' => 'User ' . substr($request->mobile, -4),
+                    'email' => 'user'.$request->mobile.'@astrotring.shop',
+                    'mobile' => $request->mobile,
+                    'username' => $username,
+                    'password' => bcrypt(substr($request->mobile, -4) . now()->format('dmY')),
+                    'status' => 1,
+                ]);
+
+                Wallet::create([
+                    'user_id' => $user->id,
+                    'balance' => 0,
+                    'total_added' => 0,
+                    'total_spent' => 0,
+                ]);
+
+                DB::commit();
+
+            } catch (\Throwable $e) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unable to create account.',
+                ], 500);
+            }
         }
 
         if (!$user->status) {

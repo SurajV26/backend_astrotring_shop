@@ -33,6 +33,9 @@ class User extends Authenticatable
         'daily_available_hours',
         'otp',
         'otp_created_at',
+        'last_otp_sent_at',
+        'otp_attempts',
+        'is_two_factor_auth_enabled',
 
         // ROLE & ACCESS
         'type',
