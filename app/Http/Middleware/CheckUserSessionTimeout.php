@@ -17,14 +17,16 @@ class CheckUserSessionTimeout
             if (
                 $user->last_seen_at &&
                 Carbon::parse($user->last_seen_at)
-                    ->diffInMinutes(now()) > 120
+                    ->diffInMinutes(now()) >= 120
             ) {
 
-                $user->update([
-                    'is_online' => 0,
-                ]);
+                $user->is_online = 0;
+                $user->last_seen_at = now();
+                $user->save();
 
-                $request->user()->currentAccessToken()->delete();
+                if ($request->user()?->currentAccessToken()) {
+                    $request->user()->currentAccessToken()->delete();
+                }
 
                 return response()->json([
                     'status' => false,
