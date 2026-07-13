@@ -130,7 +130,7 @@
                             Email
                         </small>
 
-                        {{ $user->email ?? 'N/A' }}
+                        {{ $order->email ?? 'N/A' }}
                     </div>
 
                     <div>
@@ -382,7 +382,7 @@
                                 Email
                             </small>
 
-                            {{ $order->user->email }}
+                            {{ $order->email ?? 'N/A' }}
 
                         </div>
 

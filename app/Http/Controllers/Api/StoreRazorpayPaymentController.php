@@ -641,7 +641,7 @@ class StoreRazorpayPaymentController extends Controller
                 'address_id' => $request->address_id,
                 
                 'name' => $address->name ?? null,
-                'email' => $user->email,
+                'email' => $address->email ?? $user->email,
                 'mobile' => $address->mobile ?? null,
                 'alternative_mobile' => $address->alternative_mobile ?? null,
                 'city' => $address->city ?? null,

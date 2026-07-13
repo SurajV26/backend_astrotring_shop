@@ -431,7 +431,7 @@ class StoreCodOrderController extends Controller
                 ],
                 'address_id' => $address->id,
                 'name' => $address->name,
-                'email' => $user->email,
+                'email' => $address->email ?? $user->email,
                 'mobile' => $address->mobile,
                 'alternative_mobile' => $address->alternative_mobile,
                 'city' => $address->city,
