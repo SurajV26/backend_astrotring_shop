@@ -17,7 +17,7 @@
 
                     <!-- HEADER -->
                     <tr>
-                        <td>
+                        <td
                             style="background:linear-gradient(135deg,#e65100,#fb8c00);padding:22px;text-align:center;color:#fff;">
 
                             <img src="{{ config('app.url') }}/assets/images/favicon.png" alt="Astrotring" width="70"
@@ -44,7 +44,7 @@
 
                             <p style="color:#555;font-size:14px;line-height:22px;">
 
-                                Hi <b>{{ $order->user->name ?? ($order->name ?? 'Customer') }}</b>,
+                                Hi <b>{{ $order->name ?? ($order->user->name ?? 'Customer') }}</b>,
 
                                 <br><br>
 
@@ -82,7 +82,7 @@
 
                                 <tr>
                                     <td>
-                                        <strong>AWB Code</strong>
+                                        <strong>Tracking Number</strong>
                                     </td>
 
                                     <td align="right">
@@ -121,20 +121,28 @@
                     <tr>
                         <td style="padding:10px 20px 20px;text-align:center;">
 
-                            <a href="https://track.shipway.com/t/{{ $order->awb_code }}"
+                            <p style="margin:0 0 15px;font-size:14px;color:#555;line-height:22px;">
+                                <strong>Tracking Number:</strong>
+                                <span style="color:#e65100;font-weight:bold;">
+                                    {{ $order->awb_code }}
+                                </span>
+                                <br>
+                                Enter your tracking number on the DTDC tracking page to check the latest shipment
+                                status.
+                            </p>
+
+                            <a href="https://www.dtdc.com/track-your-shipment" target="_blank"
                                 style="
-                                background:#e65100;
-                                color:#fff;
-                                text-decoration:none;
-                                padding:14px 30px;
-                                border-radius:8px;
-                                display:inline-block;
-                                font-weight:bold;
-                                font-size:15px;
-                            ">
-
-                                📦 Track Your Order
-
+                                        background:#e65100;
+                                        color:#fff;
+                                        text-decoration:none;
+                                        padding:14px 30px;
+                                        border-radius:8px;
+                                        display:inline-block;
+                                        font-weight:bold;
+                                        font-size:15px;
+                                ">
+                                📦 Track Your Order on DTDC
                             </a>
 
                         </td>
