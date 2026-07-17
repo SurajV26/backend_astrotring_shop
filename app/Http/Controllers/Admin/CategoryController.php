@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\AdminController;
 use App\Models\Category;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -24,11 +25,26 @@ class CategoryController extends AdminController
             ->orderBy('id', 'desc');
 
         return \DataTables::of($list)
-        ->addColumn('code_name', function ($row) {
-            return '[ <b>'.e($row->code).'</b> ]<br>'.e($row->name);
-        })
-        ->rawColumns(['code_name'])
-        ->make();
+
+            ->addColumn('image', function ($row) {
+
+                if ($row->cat_image) {
+                    return '<img src="'.asset('storage/categories/'.$row->cat_image).'"
+                                width="50"
+                                height="50"
+                                class="rounded border"
+                                style="object-fit:cover;">';
+                }
+
+                return '<span class="badge bg-secondary">No Image</span>';
+            })
+
+            ->addColumn('code_name', function ($row) {
+                return '[ <b>'.e($row->code).'</b> ]<br>'.e($row->name);
+            })
+
+            ->rawColumns(['image', 'code_name'])
+            ->make();
     }
 
     public function getCreate()
@@ -39,19 +55,27 @@ class CategoryController extends AdminController
     public function postCreate(Request $request)
     {
         $request->validate([
-            'code'   => 'required|unique:categories,code',
-            'name'   => 'required|unique:categories,name',
-            'slug'   => 'nullable|unique:categories,slug',
-            'status' => 'nullable|in:0,1',
+            'code'      => 'required|unique:categories,code',
+            'name'      => 'required|unique:categories,name',
+            'slug'      => 'nullable|unique:categories,slug',
+            'cat_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'status'    => 'nullable|in:0,1',
         ]);
 
         try {
 
+            $image = null;
+
+            if ($request->hasFile('cat_image')) {
+                $image = uploadFile('cat_image', null, null, 'categories');
+            }
+
             Category::create([
-                'code'   => $request->code,
-                'name'   => $request->name,
-                'slug'   => Str::slug($request->slug ?: $request->name),
-                'status' => (int) $request->input('status', 0),
+                'code'      => $request->code,
+                'name'      => $request->name,
+                'slug'      => Str::slug($request->slug ?: $request->name),
+                'cat_image' => $image,
+                'status'    => (int) $request->input('status', 0),
             ]);
 
             return response()->json([
@@ -59,6 +83,7 @@ class CategoryController extends AdminController
             ]);
 
         } catch (\Throwable $e) {
+
             \Log::error($e);
 
             return response()->json([
@@ -79,29 +104,51 @@ class CategoryController extends AdminController
         $category = Category::findOrFail($id);
 
         $request->validate([
-            'code' => 'required|unique:categories,code,'.$category->id,
-            'name' => 'required|unique:categories,name,'.$category->id,
-            'slug' => 'required|unique:categories,slug,'.$category->id,
-            'status' => 'nullable|in:1,0',
+            'code'      => 'required|unique:categories,code,' . $category->id,
+            'name'      => 'required|unique:categories,name,' . $category->id,
+            'slug'      => 'required|unique:categories,slug,' . $category->id,
+            'cat_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'status'    => 'nullable|in:1,0',
         ]);
+
+        $image = $category->cat_image;
+
+        if ($request->hasFile('cat_image')) {
+            $image = uploadFile(
+                'cat_image',
+                null,
+                null,
+                'categories',
+                $category->cat_image
+            );
+        }
 
         $category->update([
-            'code' => $request->code,
-            'name' => $request->name,
-            'slug' => \Str::slug($request->slug),
-            'status' => $request->status ?? 1,
+            'code'      => $request->code,
+            'name'      => $request->name,
+            'slug'      => Str::slug($request->slug),
+            'cat_image' => $image,
+            'status'    => $request->status ?? 1,
         ]);
 
-        return response()->json(['message' => 'Category updated successfully']);
+        return response()->json([
+            'message' => 'Category updated successfully'
+        ]);
     }
 
     public function getDelete(Request $request)
     {
-        $category = \App\Models\Category::findOrFail($request->id);
+        $category = Category::findOrFail($request->id);
+
+        if ($category->cat_image && Storage::disk('public')->exists($category->cat_image)) {
+            Storage::disk('public')->delete($category->cat_image);
+        }
 
         $category->delete();
 
-        return response()->json(['message' => 'Your request processed successfully.']);
+        return response()->json([
+            'message' => 'Your request processed successfully.'
+        ]);
     }
 
     public function getChangeStatus(Request $request)

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('code')->unique();
             $table->string('name');
+            $table->string('cat_image')->nullable();
             $table->string('slug')->unique();
             $table->boolean('status')->default(1);
             $table->timestamps();

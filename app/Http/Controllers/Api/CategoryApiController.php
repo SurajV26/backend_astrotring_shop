@@ -29,9 +29,17 @@ class CategoryApiController extends Controller
         }
 
         $categories = $query
-            ->select('id', 'name', 'slug')
+            ->select('id', 'name', 'slug', 'cat_image')
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->map(function ($category) {
+
+                $category->cat_image = $category->cat_image
+                    ? asset('storage/' . $category->cat_image)
+                    : null;
+
+                return $category;
+            });
 
         return response()->json([
             'status' => true,
@@ -45,6 +53,10 @@ class CategoryApiController extends Controller
         $category = Category::where('slug', $slug)
             ->where('status', 1)
             ->firstOrFail();
+
+        $category->cat_image = $category->cat_image
+            ? asset('storage/' . $category->cat_image)
+            : null;
 
         return response()->json([
             'status' => true,

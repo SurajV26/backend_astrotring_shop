@@ -72,6 +72,7 @@
                     <table id="data-table" class="table table-bordered dt-responsive nowrap w-100">
                         <thead>
                             <tr>
+                                <th width="150px">Category Image</th>
                                 <th>Name</th>
                                 <th>Slug</th>
                                 <th>Status</th>
@@ -101,6 +102,12 @@
                     }
                 },
                 columns: [{
+                        data: 'image',
+                        name: 'image',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
                         data: 'code_name',
                         name: 'code_name'
                     },

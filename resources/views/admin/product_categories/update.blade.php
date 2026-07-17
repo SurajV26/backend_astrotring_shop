@@ -26,6 +26,25 @@
                     </div>
                 </div>
 
+                <div class="col-lg-12 mt-3">
+                    <div class="form-group">
+
+                        <label class="fw-bold">
+                            Category Image
+                            <sup class="text-danger fs-5">*</sup> :
+                        </label>
+
+                        <input type="file" name="cat_image" class="dropify"
+                            data-default-file="{{ $category->cat_image ? asset('storage/categories/' . $category->cat_image) : '' }}"
+                            data-allowed-file-extensions="jpg jpeg png webp" data-max-file-size="2M">
+
+                        <small class="text-muted">
+                            Example: Upload Category Image (JPG, JPEG, PNG, WEBP).
+                        </small>
+
+                    </div>
+                </div>
+
                 <div class="col-lg-12">
                     <div class="form-group">
                         <label class="form-label">Product Category Slug <sup class="text-danger">*</sup></label>
@@ -55,6 +74,8 @@
 </div>
 
 <script>
+    $('.dropify').dropify();
+
     $('input[name="name"]').on('keyup change', function() {
         let slug = $(this).val()
             .toLowerCase()
