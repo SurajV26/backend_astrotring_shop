@@ -70,6 +70,7 @@ return new class extends Migration
                 'packed',
                 'shipped',
                 'delivered',
+                'rto',
                 'cancelled'
             ])->default('pending');
 
@@ -77,6 +78,7 @@ return new class extends Migration
             $table->timestamp('delivered_at')->nullable();
             $table->timestamp('cancelled_at')->nullable();
             $table->text('cancel_reason')->nullable();
+            $table->timestamp('rto_at')->nullable();
 
             $table->json('price_breakdown')->nullable();
 

@@ -56,6 +56,7 @@ Route::namespace('App\Http\Controllers\Admin')
                         Route::get('/', 'DashboardController@getIndex')->name('index');
                         Route::get('/navigation', 'DashboardController@getNav')->name('navigation');
                         Route::get('/stats', 'DashboardController@getStats')->name('stats');
+                        Route::get('/status-breakdown', 'DashboardController@getStatusBreakdown')->name('status.breakdown');
                         Route::get('/graph/growth', 'DashboardController@getSalesGraph')->name('graph.growth');
                         Route::get('/graph/engagement', 'DashboardController@getUserGraph')->name('graph.engagement');
                         Route::get('/top-products', 'DashboardController@getTopProducts')->name('top.products');

@@ -101,6 +101,7 @@ class Order extends Model
         'paid_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'rto_at'       => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
