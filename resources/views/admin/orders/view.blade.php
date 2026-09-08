@@ -193,7 +193,7 @@
 
                     <div class="row g-3 align-items-end">
 
-                        <div class="col-md-9">
+                        <div class="col-md-{{ $order->status === 'cancelled' ? '6' : '9' }}">
 
                             <div class="form-group">
 
@@ -218,6 +218,26 @@
                         </div>
 
 
+                        {{-- CANCEL REASON --}}
+                        <div class="col-md-3" id="cancelReasonWrapper"
+                            style="{{ $order->status === 'cancelled' ? '' : 'display:none;' }}">
+
+                            <div class="form-group">
+
+                                <label for="cancelReason" class="form-label fw-bold">
+                                    Cancel Reason :
+                                </label>
+
+                                <input type="text" name="cancel_reason" id="cancelReason" class="form-control"
+                                    value="{{ $order->cancel_reason ?? '' }}" placeholder="Enter cancellation reason"
+                                    maxlength="1000">
+
+                            </div>
+
+                        </div>
+
+
+                        {{-- UPDATE BUTTON --}}
                         <div class="col-md-3">
 
                             <button type="submit" class="btn btn-primary w-100">
@@ -1193,6 +1213,26 @@
             },
             allowClear: true,
             dropdownParent: $('#order-view-wrapper')
+        });
+
+        $('#order-view-wrapper').on('change', '#orderStatus', function() {
+
+            const status = $(this).val();
+            const $wrapper = $('#cancelReasonWrapper');
+            const $input = $('#cancelReason');
+
+            if (status === 'cancelled') {
+
+                $wrapper.show();
+                $input.prop('required', true);
+
+            } else {
+
+                $wrapper.hide();
+                $input.prop('required', false);
+                $input.val('');
+
+            }
         });
     </script>
 
