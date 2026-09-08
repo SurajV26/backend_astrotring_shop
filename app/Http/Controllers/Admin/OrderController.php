@@ -139,10 +139,12 @@ class OrderController extends Controller
     {
         $request->validate([
             'status' => 'required|in:pending,paid,packed,shipped,rto,cancelled',
+            'cancel_reason' => 'required_if:status,cancelled|nullable|string|max:1000',
         ]);
 
         $order = Order::with('coupon')->findOrFail($id);
 
+        // Employee permission check
         if (
             auth()->user()->type == 'employee' &&
             (
@@ -160,10 +162,28 @@ class OrderController extends Controller
             'shipping_status' => $status,
         ];
 
+        /*
+        |--------------------------------------------------------------------------
+        | RTO
+        |--------------------------------------------------------------------------
+        */
         if ($status === 'rto') {
             $updateData['rto_at'] = $order->rto_at ?? now();
         } else {
             $updateData['rto_at'] = null;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | CANCELLED
+        |--------------------------------------------------------------------------
+        */
+        if ($status === 'cancelled') {
+            $updateData['cancelled_at'] = $order->cancelled_at ?? now();
+            $updateData['cancel_reason'] = trim($request->cancel_reason);
+        } else {
+            $updateData['cancelled_at'] = null;
+            $updateData['cancel_reason'] = null;
         }
 
         $order->update($updateData);
