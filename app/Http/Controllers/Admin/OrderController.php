@@ -81,7 +81,6 @@ class OrderController extends Controller
                     return '<div class="mb-1">'.$name.'</div>';
                 })->implode('');
             })
-            
             ->addColumn('items_count', function ($order) {
                 return '<span class="fw-bold">'.$order->items->count().'</span>';
             })
@@ -134,6 +133,45 @@ class OrderController extends Controller
         }
 
         return view('admin.orders.view', compact('order'));
+    }
+    
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:pending,paid,packed,shipped,rto,cancelled',
+        ]);
+
+        $order = Order::with('coupon')->findOrFail($id);
+
+        if (
+            auth()->user()->type == 'employee' &&
+            (
+                !$order->coupon ||
+                $order->coupon->employee_id != auth()->id()
+            )
+        ) {
+            abort(403);
+        }
+
+        $status = $request->status;
+
+        $updateData = [
+            'status' => $status,
+            'shipping_status' => $status,
+        ];
+
+        if ($status === 'rto') {
+            $updateData['rto_at'] = $order->rto_at ?? now();
+        } else {
+            $updateData['rto_at'] = null;
+        }
+
+        $order->update($updateData);
+
+        return back()->with(
+            'success',
+            'Order status updated successfully.'
+        );
     }
 
     public function sendMail(Request $request, $id)
