@@ -54,7 +54,7 @@ class OrderController extends Controller
 
         return datatables()->of($orders)
             ->addColumn('order_no', function ($o) {
-                return \Illuminate\Support\Str::limit($o->order_number, 10);
+                return \Illuminate\Support\Str::limit($o->order_number, 20);
             })
 
             ->addColumn('user', function ($o) {
