@@ -78,10 +78,23 @@ class ProductController extends AdminController
     public function postCreate(Request $request)
     {
 
+        $subName = $request->input('sub_name');
+        
+        if (is_string($subName)) {
+            $subName = array_values(array_filter(
+                array_map('trim', explode(',', $subName))
+            ));
+        }
+        
+        $request->merge([
+            'sub_name' => $subName,
+        ]);
+        
         $request->validate([
             'category_id'  => 'required|exists:categories,id',
             'code'         => 'required|unique:products,code',
             'name'         => 'required|max:255',
+            'sub_name'     => 'nullable|array',
             'slug'         => 'nullable|unique:products,slug',
 
             'stone_name'   => 'nullable|string|max:255',
@@ -130,6 +143,7 @@ class ProductController extends AdminController
 
             'stock_qty'    => 'required|integer|min:0',
 
+            'is_bestseller' => 'nullable|in:0,1',
             'status' => 'nullable|in:0,1',
 
             'media' => 'nullable|array',
@@ -172,6 +186,7 @@ class ProductController extends AdminController
                 'category_id' => $request->category_id,
                 'code' => $request->code,
                 'name' => $request->name,
+                'sub_name' => $request->sub_name,
                 'slug' => Str::slug($request->slug ?: $request->name),
 
                 'stone_name' => $request->stone_name,
@@ -211,6 +226,7 @@ class ProductController extends AdminController
                 'stock_qty' => $request->stock_qty,
                 'stock_status' => Product::resolveStockStatus($request->stock_qty),
 
+                'is_bestseller' => (int)$request->input('is_bestseller', 0),
                 'status' => (int)$request->input('status',1),
             ]);
 
@@ -278,11 +294,24 @@ class ProductController extends AdminController
     public function postUpdate(Request $request, $id)
     {
         $product = Product::findOrFail($id);
+        
+        $subName = $request->input('sub_name');
+        
+        if (is_string($subName)) {
+            $subName = array_values(array_filter(
+                array_map('trim', explode(',', $subName))
+            ));
+        }
+        
+        $request->merge([
+            'sub_name' => $subName,
+        ]);
 
         $request->validate([
             'category_id' => 'required|exists:categories,id',
             'code' => 'required|max:100|unique:products,code,' . $product->id,
             'name' => 'required|max:255',
+            'sub_name'     => 'nullable|array',
             'slug' => 'required|unique:products,slug,' . $product->id,
 
             'ratti_options' => 'nullable|array',
@@ -350,6 +379,8 @@ class ProductController extends AdminController
                 'category_id' => $request->category_id,
 
                 'name' => $request->name,
+                
+                'sub_name' => $request->sub_name,
 
                 'slug' => Str::slug($request->slug),
 
@@ -390,6 +421,7 @@ class ProductController extends AdminController
                 'stock_qty' => $request->stock_qty,
                 'stock_status' => Product::resolveStockStatus($request->stock_qty),
 
+                'is_bestseller' => (int)$request->input('is_bestseller', 0),
                 'status' => (int)$request->input('status',1),
 
                 'lab_certificates' => $labCertificates

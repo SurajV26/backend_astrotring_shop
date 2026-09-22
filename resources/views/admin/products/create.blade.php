@@ -48,7 +48,7 @@
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#images">Images</a>
+                        <a class="nav-link" data-bs-toggle="tab" href="#images">Images/Videos</a>
                     </li>
 
                 </ul>
@@ -213,7 +213,21 @@
                                 <div class="card">
 
                                     <div class="card-header">
-                                        <h4 class="card-title mb-0">Product Status</h4>
+                                        <h4 class="card-title mb-0">Product Specify</h4>
+                                    </div>
+
+                                    <div class="card-body">
+
+                                        <label class="fw-bold">Sub Product Name <sup class="text-danger fs-5">*</sup>
+                                            :</label>
+
+                                        <input type="text" name="sub_name" class="form-control"
+                                            placeholder="Example: Natural, Premium, Certified" required>
+
+                                    </div>
+
+                                    <div class="card-header">
+                                        <h4 class="card-title mb-0">Product Status & Bestseller</h4>
                                     </div>
 
                                     <div class="card-body">
@@ -230,6 +244,28 @@
                                                     value="1" checked>
 
                                                 <label for="switch-status" data-on-label="Yes"
+                                                    data-off-label="No"></label>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                    <div class="card-body">
+
+                                        <div class="d-flex justify-content-between align-items-center">
+
+                                            <label>Bestseller</label>
+
+                                            <input type="hidden" name="is_bestseller" value="0">
+
+                                            <div class="square-switch">
+
+                                                <input type="checkbox" id="switch-bestseller" name="is_bestseller"
+                                                    switch="is_bestseller" value="1" checked>
+
+                                                <label for="switch-bestseller" data-on-label="Yes"
                                                     data-off-label="No"></label>
 
                                             </div>

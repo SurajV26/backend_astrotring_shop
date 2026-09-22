@@ -51,7 +51,7 @@
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" href="#images">Images</a>
+                        <a class="nav-link" data-bs-toggle="tab" href="#images">Images/Videos</a>
                     </li>
 
                 </ul>
@@ -212,18 +212,66 @@
 
                                 <div class="card">
 
-                                    <div class="card-header fw-bold">
-                                        Product Status
+                                    <div class="card-header">
+                                        <h4 class="card-title mb-0">Product Specify</h4>
                                     </div>
 
                                     <div class="card-body">
 
-                                        <input type="hidden" name="status" value="0">
+                                        <label class="fw-bold">Sub Product Name <sup class="text-danger fs-5">*</sup>
+                                            :</label>
 
-                                        <input type="checkbox" name="status" value="1"
-                                            {{ $product->status ? 'checked' : '' }}>
+                                        <input type="text" name="sub_name" class="form-control"
+                                            placeholder="Example: Natural, Premium, Certified"
+                                            value="{{ is_array($product->sub_name) ? implode(', ', $product->sub_name) : $product->sub_name }}"
+                                            required>
 
-                                        Active
+                                    </div>
+
+                                    <div class="card-header">
+                                        <h4 class="card-title mb-0">Product Status & Bestseller</h4>
+                                    </div>
+
+                                    {{-- STATUS --}}
+                                    <div class="card-body">
+
+                                        <div class="d-flex justify-content-between align-items-center">
+
+                                            <label class="fw-bold mb-0">Status</label>
+
+                                            <input type="hidden" name="status" value="0">
+
+                                            <div class="square-switch">
+                                                <input type="checkbox" id="switch-status" name="status" switch="status"
+                                                    value="1" {{ $product->status ? 'checked' : '' }}>
+
+                                                <label for="switch-status" data-on-label="Yes" data-off-label="No">
+                                                </label>
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                    {{-- BESTSELLER --}}
+                                    <div class="card-body">
+
+                                        <div class="d-flex justify-content-between align-items-center">
+
+                                            <label class="fw-bold mb-0">Bestseller</label>
+
+                                            <input type="hidden" name="is_bestseller" value="0">
+
+                                            <div class="square-switch">
+                                                <input type="checkbox" id="switch-bestseller" name="is_bestseller"
+                                                    switch="is_bestseller" value="1"
+                                                    {{ $product->is_bestseller ? 'checked' : '' }}>
+
+                                                <label for="switch-bestseller" data-on-label="Yes" data-off-label="No">
+                                                </label>
+                                            </div>
+
+                                        </div>
 
                                     </div>
 
