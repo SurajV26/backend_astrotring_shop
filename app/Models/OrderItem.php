@@ -17,7 +17,7 @@ class OrderItem extends Model
         'product_name',
         'product_slug',
         'product_image',
-        'ratti',     
+        'ratti',
         'quantity',
         'price',
         'total',
@@ -36,22 +36,23 @@ class OrderItem extends Model
     ];
 
     protected $casts = [
-        'ratti' => 'float',
+        'ratti' => 'decimal:2',
         'quantity' => 'integer',
 
-        'price' => 'float',
-        'total' => 'float',
+        'price' => 'decimal:2',
+        'total' => 'decimal:2',
 
-        'weight' => 'float',
-        'length' => 'float',
-        'breadth' => 'float',
-        'height' => 'float',
-        'gst_rate' => 'float',
-        'gst_amount' => 'float',
-        'taxable_amount' => 'float',
-        'cgst_amount' => 'float',
-        'sgst_amount' => 'float',
-        'igst_amount' => 'float',
+        'weight' => 'decimal:2',
+        'length' => 'decimal:2',
+        'breadth' => 'decimal:2',
+        'height' => 'decimal:2',
+
+        'gst_rate' => 'decimal:2',
+        'gst_amount' => 'decimal:2',
+        'taxable_amount' => 'decimal:2',
+        'cgst_amount' => 'decimal:2',
+        'sgst_amount' => 'decimal:2',
+        'igst_amount' => 'decimal:2',
     ];
 
     public function order()

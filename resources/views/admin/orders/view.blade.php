@@ -98,9 +98,22 @@
 
                     </div>
 
+                    <div class="text-muted small mt-2">
+                        Placed on {{ optional($order->created_at)->format('d M Y h:i A') }}
+                    </div>
+
+                    <a href="{{ route('admin.orders.invoice.view', $order->id) }}" target="_blank"
+                        class="btn btn-danger">
+                        <i class="fa fa-file-pdf"></i> View PDF
+                    </a>
+
+                    <a href="{{ route('admin.orders.invoice.download', $order->id) }}" class="btn btn-success">
+                        <i class="fa fa-download"></i> Download PDF
+                    </a>
+
 
                     {{-- PDF ACTIONS --}}
-                    @if ($order->pdf)
+                    {{-- @if ($order->pdf)
                         <div class="mt-3 d-flex align-items-center gap-2 flex-wrap">
 
                             <a href="{{ asset('storage/' . $order->pdf) }}" target="_blank"
@@ -115,7 +128,7 @@
                             </a>
 
                         </div>
-                    @endif
+                    @endif --}}
 
                 </div>
 

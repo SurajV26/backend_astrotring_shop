@@ -307,8 +307,11 @@ Route::namespace('App\Http\Controllers\Admin')
                         Route::get('create', 'OrderController@getCreate')->name('create.index');
                         Route::post('create', 'OrderController@postCreate')->name('create');
                         Route::post('update/{id?}', 'OrderController@postUpdate')->name('update');
+                        Route::put('{id}/update', 'OrderController@updateStatus')->name('update-status');
                         Route::get('view/{id?}', 'OrderController@getView')->name('view');
                         Route::post('{id}/send-mail', 'OrderController@sendMail')->name('send-mail');
+                        Route::get('{id}/invoice/view', 'OrderController@viewPdf')->name('invoice.view');
+                        Route::get('{id}/invoice/download', 'OrderController@downloadPdf')->name('invoice.download');
                     });
 
                 Route::prefix('settings')
