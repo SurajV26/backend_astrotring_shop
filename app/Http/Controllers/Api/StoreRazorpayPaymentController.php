@@ -37,7 +37,7 @@ class StoreRazorpayPaymentController extends Controller
                 'wallet_amount' => 'nullable|numeric|min:0',
             ]);
 
-            $walletInput = $request->wallet_amount ?? 0;
+            $walletInput = round((float) ($request->wallet_amount ?? 0), 2);
 
             // ðŸ”¥ CART
             $cart = Cart::where('user_id', $user->id)->firstOrFail();
@@ -49,7 +49,7 @@ class StoreRazorpayPaymentController extends Controller
 
             $validatedCart = $this->validateCartItems($items);
 
-            $subtotal = $validatedCart['subtotal'];
+            $subtotal = round((float) $validatedCart['subtotal'], 2);
 
             $discount = 0;
             $couponId = null;
@@ -83,12 +83,14 @@ class StoreRazorpayPaymentController extends Controller
 
                 if ($coupon->discount_type == 'flat') {
 
-                    $discount = (float) $coupon->discount_value;
+                    $discount = round((float) $coupon->discount_value, 2);
 
                 } else {
 
-                    $discount =
-                        ($subtotal * $coupon->discount_value) / 100;
+                    $discount = round(
+                        ($subtotal * (float) $coupon->discount_value) / 100,
+                        2
+                    );
 
                     if ($coupon->max_discount) {
 
@@ -100,18 +102,20 @@ class StoreRazorpayPaymentController extends Controller
                 }
 
                 // SAFETY
-                $discount = min($discount, $subtotal);
+                $discount = round(min($discount, $subtotal), 2);
 
                 $couponId = $coupon->id;
             }
 
-            $afterDiscount = max(0, $subtotal - $discount);
+            $afterDiscount = round(max(0, $subtotal - $discount), 2);
 
             $deliveryCharge = 0;
 
             if ($request->address_id) {
 
-                $address = AlternativeAddress::find($request->address_id);
+                $address = AlternativeAddress::where('id', $request->address_id)
+                    ->where('user_id', $user->id)
+                    ->first();
 
                 if ($address && $address->state) {
 
@@ -120,7 +124,9 @@ class StoreRazorpayPaymentController extends Controller
                         ->first();
 
                     if ($deliveryRate) {
-                        $deliveryCharge = $subtotal >= 800 ? 0 : (float) $deliveryRate->delivery_charge;
+                        $deliveryCharge = $subtotal >= 800
+                            ? 0.00
+                            : round((float) $deliveryRate->delivery_charge, 2);
                     }
                 }
             }
@@ -148,9 +154,9 @@ class StoreRazorpayPaymentController extends Controller
                 $walletInput = ($afterDiscount + $deliveryCharge);
             }
 
-            $walletUsed = $walletInput;
+            $walletUsed = round($walletInput, 2);
 
-            $finalAmount = max(0, ($afterDiscount + $deliveryCharge) - $walletUsed);
+            $finalAmount = round(max(0, ($afterDiscount + $deliveryCharge) - $walletUsed), 2);
 
             // FULL WALLET PAYMENT
             if ($finalAmount <= 0) {
@@ -160,11 +166,11 @@ class StoreRazorpayPaymentController extends Controller
                     'payment_mode' => 'wallet_only',
                     'order_id' => null,
                     'breakdown' => [
-                        'subtotal' => $subtotal,
-                        'discount' => $discount,
-                        'delivery_charge' => $deliveryCharge,
-                        'wallet_used' => $walletUsed,
-                        'final_amount' => 0
+                        'subtotal' => number_format((float) $subtotal, 2, '.', ''),
+                        'discount' => number_format((float) $discount, 2, '.', ''),
+                        'delivery_charge' => number_format($deliveryCharge, 2, '.', ''),
+                        'wallet_used' => number_format($walletUsed, 2, '.', ''),
+                        'final_amount' => '0.00'
                     ]
                 ]);
             }
@@ -180,11 +186,11 @@ class StoreRazorpayPaymentController extends Controller
                 'notes' => [
                     'user_id' => $user->id,
                     'address_id' => $request->address_id,
-                    'subtotal' => $subtotal,
-                    'discount' => $discount,
-                    'delivery_charge' => $deliveryCharge,
-                    'wallet_used' => $walletUsed,
-                    'final_amount' => $finalAmount
+                    'subtotal' => number_format((float) $subtotal, 2, '.', ''),
+                    'discount' => number_format((float) $discount, 2, '.', ''),
+                    'delivery_charge' => number_format($deliveryCharge, 2, '.', ''),
+                    'wallet_used' => number_format($walletUsed, 2, '.', ''),
+                    'final_amount' => number_format($finalAmount, 2, '.', '')
                 ]
             ]);
 
@@ -192,11 +198,11 @@ class StoreRazorpayPaymentController extends Controller
                 'status' => true,
                 'order_id' => $order['id'],
                 'breakdown' => [
-                    'subtotal' => $subtotal,
-                    'discount' => $discount,
-                    'delivery_charge' => $deliveryCharge,
-                    'wallet_used' => $walletUsed,
-                    'final_amount' => $finalAmount
+                    'subtotal' => number_format((float) $subtotal, 2, '.', ''),
+                    'discount' => number_format((float) $discount, 2, '.', ''),
+                    'delivery_charge' => number_format($deliveryCharge, 2, '.', ''),
+                    'wallet_used' => number_format($walletUsed, 2, '.', ''),
+                    'final_amount' => number_format($finalAmount, 2, '.', '')
                 ]
             ]);
 
@@ -229,7 +235,7 @@ class StoreRazorpayPaymentController extends Controller
         try {
 
             $user = $request->user();
-            $walletInput = $request->wallet_amount ?? 0;
+            $walletInput = round((float) ($request->wallet_amount ?? 0), 2);
 
             // ðŸ”¥ CART
             $cart = Cart::where('user_id', $user->id)->firstOrFail();
@@ -304,12 +310,14 @@ class StoreRazorpayPaymentController extends Controller
 
                 if ($coupon->discount_type == 'flat') {
 
-                    $discount = (float) $coupon->discount_value;
+                    $discount = round((float) $coupon->discount_value, 2);
 
                 } else {
 
-                    $discount =
-                        ($subtotal * $coupon->discount_value) / 100;
+                    $discount = round(
+                        ($subtotal * (float) $coupon->discount_value) / 100,
+                        2
+                    );
 
                     if ($coupon->max_discount) {
 
@@ -321,18 +329,20 @@ class StoreRazorpayPaymentController extends Controller
                 }
 
                 // SAFETY
-                $discount = min($discount, $subtotal);
+                $discount = round(min($discount, $subtotal), 2);
 
                 $couponId = $coupon->id;
             }
 
-            $afterDiscount = max(0, $subtotal - $discount);
+            $afterDiscount = round(max(0, $subtotal - $discount), 2);
 
             $deliveryCharge = 0;
 
             if ($request->address_id) {
 
-                $address = AlternativeAddress::find($request->address_id);
+                $address = AlternativeAddress::where('id', $request->address_id)
+                    ->where('user_id', $user->id)
+                    ->first();
 
                 if ($address && $address->state) {
 
@@ -341,7 +351,9 @@ class StoreRazorpayPaymentController extends Controller
                         ->first();
 
                     if ($deliveryRate) {
-                        $deliveryCharge = $subtotal >= 800 ? 0 : (float) $deliveryRate->delivery_charge;
+                        $deliveryCharge = $subtotal >= 800
+                            ? 0.00
+                            : round((float) $deliveryRate->delivery_charge, 2);
                     }
                 }
             }
@@ -366,8 +378,8 @@ class StoreRazorpayPaymentController extends Controller
                 $walletInput = ($afterDiscount + $deliveryCharge);
             }
 
-            $walletUsed = $walletInput;
-            $finalAmount = max(0, ($afterDiscount + $deliveryCharge) - $walletUsed);
+            $walletUsed = round($walletInput, 2);
+            $finalAmount = round(max(0, ($afterDiscount + $deliveryCharge) - $walletUsed), 2);
 
             if ($finalAmount > 0 && !$request->razorpay_payment_id) {
                 throw new \Exception('Payment required');
@@ -402,6 +414,13 @@ class StoreRazorpayPaymentController extends Controller
                         throw new \Exception('Payment not captured');
                     }
 
+                    $gatewayAmount = (int) ($paymentData['amount'] ?? 0);
+                    $expectedGatewayAmount = (int) round($finalAmount * 100);
+
+                    if ($gatewayAmount !== $expectedGatewayAmount) {
+                        throw new \Exception('Payment amount mismatch');
+                    }
+
                     $paymentMode = $paymentData['method'] ?? 'online';
 
                 } else {
@@ -412,10 +431,10 @@ class StoreRazorpayPaymentController extends Controller
                 $payment = Payment::create([
                     'user_id' => $user->id,
                     'platform' => 'astrotring_store',
-                    'order_id' => $request->razorpay_order_id,
+                    'order_id' => null,
                     'payment_gateway' => 'razorpay',
                     'transaction_id' => $request->razorpay_payment_id,
-                    'amount' => $finalAmount,
+                    'amount' => number_format($finalAmount, 2, '.', ''),
                     'currency' => 'INR',
                     'payment_status' => 'success',
                     'payment_mode' => $paymentMode,
@@ -424,12 +443,12 @@ class StoreRazorpayPaymentController extends Controller
                     'customer_phone' => trim(($user->country_code ?? '') . ($user->mobile ?? '')),
 
                     'payment_request_data' => [
-                        'subtotal' => $subtotal,
-                        'discount' => $discount,
-                        'wallet_requested' => $request->wallet_amount,
-                        'wallet_used' => $walletUsed,
-                        'final_amount' => $finalAmount,
-                        'delivery_charge' => $deliveryCharge,
+                        'subtotal' => number_format((float) $subtotal, 2, '.', ''),
+                        'discount' => number_format((float) $discount, 2, '.', ''),
+                        'wallet_requested' => number_format((float) ($request->wallet_amount ?? 0), 2, '.', ''),
+                        'wallet_used' => number_format($walletUsed, 2, '.', ''),
+                        'final_amount' => number_format($finalAmount, 2, '.', ''),
+                        'delivery_charge' => number_format($deliveryCharge, 2, '.', ''),
                         'coupon_code' => $request->coupon_code
                     ],
 
@@ -443,43 +462,57 @@ class StoreRazorpayPaymentController extends Controller
 
                 $address = DB::table('alternative_addresses')
                     ->where('id', $request->address_id)
+                    ->where('user_id', $user->id)
                     ->first();
             }
 
             $sellerState = 'Delhi';
 
-            $productTax = 0;
-            $productTaxableAmount = 0;
+            $productTax = 0.00;
+            $productTaxableAmount = 0.00;
 
-            $shippingTax = 0;
-            $shippingTaxable = 0;
-
-            $gstRate = 0;
+            $shippingTax = 0.00;
+            $shippingTaxable = 0.00;
 
             $hsnCodes = [];
+            $itemTaxDetails = [];
 
+            $taxType = (
+                $address &&
+                strtolower(trim($address->state ?? '')) === strtolower(trim($sellerState))
+            ) ? 'cgst_sgst' : 'igst';
+
+            $productCgstAmount = 0.00;
+            $productSgstAmount = 0.00;
+            $productIgstAmount = 0.00;
+
+            $shippingCgstAmount = 0.00;
+            $shippingSgstAmount = 0.00;
+            $shippingIgstAmount = 0.00;
+
+            /*
+             * PRODUCT GST
+             * Product price in store is GST-inclusive.
+             * GST = Amount × Rate / (100 + Rate)
+             */
             foreach ($items as $item) {
 
                 $product = $products[$item->product_id] ?? null;
 
                 if (!$product) {
-                    continue;
+                    throw new \Exception('Product not found');
                 }
 
-                $itemTotal = $item->total_price;
+                $itemTotal = round((float) $item->total_price, 2);
+                $itemGstRate = round((float) ($product->gst_rate ?? 0), 2);
 
-                // PRODUCT GST
-                $itemGstRate = $product->gst_rate ?? 0;
-
-                // PRODUCT HSN
                 if ($product->hsn_code) {
                     $hsnCodes[] = $product->hsn_code;
                 }
 
-                // TAX CALCULATION
-                $itemTax = round(
-                    ($itemTotal * $itemGstRate) / 100,
-                    2
+                $itemTax = $this->calculateInclusiveGst(
+                    $itemTotal,
+                    $itemGstRate
                 );
 
                 $itemTaxableAmount = round(
@@ -487,81 +520,117 @@ class StoreRazorpayPaymentController extends Controller
                     2
                 );
 
-                $productTaxableAmount += $itemTaxableAmount;
-                $productTax += $itemTax;
+                $itemCgst = 0.00;
+                $itemSgst = 0.00;
+                $itemIgst = 0.00;
 
-                // SAVE GST RATE
-                $gstRate = $itemGstRate;
+                if ($taxType === 'cgst_sgst') {
+                    $itemCgst = round($itemTax / 2, 2);
+                    $itemSgst = round($itemTax - $itemCgst, 2);
+                } else {
+                    $itemIgst = $itemTax;
+                }
+
+                $productTax += $itemTax;
+                $productTaxableAmount += $itemTaxableAmount;
+
+                $productCgstAmount += $itemCgst;
+                $productSgstAmount += $itemSgst;
+                $productIgstAmount += $itemIgst;
+
+                $itemTaxDetails[$item->id] = [
+                    'gst_rate' => number_format($itemGstRate, 2, '.', ''),
+                    'gst_amount' => round($itemTax, 2),
+                    'taxable_amount' => round($itemTaxableAmount, 2),
+                    'cgst_amount' => round($itemCgst, 2),
+                    'sgst_amount' => round($itemSgst, 2),
+                    'igst_amount' => round($itemIgst, 2),
+                    'tax_type' => $taxType,
+                ];
             }
 
             $hsnCodes = array_unique($hsnCodes);
-
             $hsnCode = implode(',', $hsnCodes);
 
-            $cgstAmount = 0;
-            $sgstAmount = 0;
-            $igstAmount = 0;
+            /* SHIPPING GST - delivery charge is GST-inclusive */
+            $shippingGstRate = 18.00;
 
-            $shippingGstRate = 18;
-            $shippingTaxable = 0;
-            $shippingTax = 0;
+            $shippingTax = $this->calculateInclusiveGst(
+                round((float) $deliveryCharge, 2),
+                $shippingGstRate
+            );
 
-            if ($deliveryCharge > 0) {
+            $shippingTaxable = round(
+                (float) $deliveryCharge - $shippingTax,
+                2
+            );
 
-                $shippingTax = round(
-                    ($deliveryCharge * $shippingGstRate) / 100,
-                    2
-                );
-
-                $shippingTaxable = round(
-                    $deliveryCharge - $shippingTax,
-                    2
-                );
-
-            }
-
-            $productCgstAmount = 0;
-            $productSgstAmount = 0;
-            $productIgstAmount = 0;
-
-            $shippingCgstAmount = 0;
-            $shippingSgstAmount = 0;
-            $shippingIgstAmount = 0;
-
-            $taxType = null;
-
-            if (
-                $address &&
-                strtolower(trim($address->state))
-                    == strtolower(trim($sellerState))
-            ) {
-
-                $taxType = 'cgst_sgst';
-
-                $productCgstAmount = round($productTax / 2, 2);
-                $productSgstAmount = round($productTax / 2, 2);
-
+            if ($taxType === 'cgst_sgst') {
                 $shippingCgstAmount = round($shippingTax / 2, 2);
-                $shippingSgstAmount = round($shippingTax / 2, 2);
-
+                $shippingSgstAmount = round(
+                    $shippingTax - $shippingCgstAmount,
+                    2
+                );
             } else {
-
-                $taxType = 'igst';
-
-                $productIgstAmount = $productTax;
-
                 $shippingIgstAmount = $shippingTax;
             }
 
+            $taxableAmount = round(
+                $productTaxableAmount + $shippingTaxable,
+                2
+            );
+
+            $cgstAmount = round(
+                $productCgstAmount + $shippingCgstAmount,
+                2
+            );
+
+            $sgstAmount = round(
+                $productSgstAmount + $shippingSgstAmount,
+                2
+            );
+
+            $igstAmount = round(
+                $productIgstAmount + $shippingIgstAmount,
+                2
+            );
+
+            $totalGstAmount = round(
+                $cgstAmount + $sgstAmount + $igstAmount,
+                2
+            );
+
+            /*
+             * One order can contain multiple GST rates.
+             * orders.gst_rate stores an effective product GST rate.
+             */
+            $gstRate = $productTaxableAmount > 0
+                ? round(
+                    ($productTax / $productTaxableAmount) * 100,
+                    2
+                )
+                : 0.00;
+
+            $gstRate = number_format(
+                $gstRate,
+                2,
+                '.',
+                ''
+            );
+
+            /* STOCK UPDATE */
             foreach ($items as $item) {
 
-                $product = $products[$item->product_id];
+                $product = $products[$item->product_id] ?? null;
 
-                $newStock = $product->stock_qty - $item->quantity;
+                if (!$product) {
+                    throw new \Exception('Product not found');
+                }
 
+                $newStock = (int) $product->stock_qty - (int) $item->quantity;
                 $status = 'in_stock';
 
-                if ($newStock == 0) {
+                if ($newStock <= 0) {
                     $status = 'out_of_stock';
                 } elseif ($newStock <= 5) {
                     $status = 'few_left';
@@ -569,7 +638,7 @@ class StoreRazorpayPaymentController extends Controller
 
                 $product->update([
                     'stock_qty' => $newStock,
-                    'stock_status' => $status
+                    'stock_status' => $status,
                 ]);
             }
 
@@ -594,52 +663,70 @@ class StoreRazorpayPaymentController extends Controller
                 }
             }
 
+            $totalOrderAmount = round(
+                $afterDiscount + $deliveryCharge,
+                2
+            );
+
             $order = Order::create([
                 'user_id' => $user->id,
-                'user_name' => $user->name,
                 'coupon_id' => $couponId,
                 'payment_id' => $payment ? $payment->id : null,
                 'order_number' => 'ORD-' . strtoupper(uniqid()),
                 'invoice_sequence' => $nextInvoiceSequence,
-                'invoice_number' => 'AT-' . str_pad($nextInvoiceSequence, 4, '0', STR_PAD_LEFT),
+                'invoice_number' => 'AT-' . str_pad(
+                    $nextInvoiceSequence,
+                    4,
+                    '0',
+                    STR_PAD_LEFT
+                ),
                 'hsn_code' => $hsnCode,
-                'subtotal' => $subtotal,
-                'discount' => $discount,
-                'wallet_used' => $walletUsed,
-                'delivery_charge' => $deliveryCharge,
-                'paid_amount' => $finalAmount,
-                'total_amount' => ($afterDiscount + $deliveryCharge),
+
+                'subtotal' => number_format($subtotal, 2, '.', ''),
+                'discount' => number_format($discount, 2, '.', ''),
+                'wallet_used' => number_format($walletUsed, 2, '.', ''),
+                'delivery_charge' => number_format($deliveryCharge, 2, '.', ''),
+
+                // Wallet + Razorpay together pay the whole order amount.
+                'paid_amount' => number_format($totalOrderAmount, 2, '.', ''),
+                'total_amount' => number_format($totalOrderAmount, 2, '.', ''),
 
                 'price_breakdown' => [
-                    'subtotal' => $subtotal,
-                    'coupon_discount' => $discount,
-                    'delivery_charge' => $deliveryCharge,
-                    'shipping_gst_rate' => $shippingGstRate,
-                    'shipping_gst_amount' => $shippingTax,
-                    'shipping_taxable_amount' => $shippingTaxable,
-                    'product_gst_amount' => $productTax,
-                    'product_taxable_amount' => $productTaxableAmount,
+                    'subtotal' => number_format($subtotal, 2, '.', ''),
+                    'coupon_discount' => number_format($discount, 2, '.', ''),
+                    'delivery_charge' => number_format($deliveryCharge, 2, '.', ''),
+                    'wallet_used' => number_format($walletUsed, 2, '.', ''),
 
-                    'product_cgst_amount' => $productCgstAmount,
-                    'product_sgst_amount' => $productSgstAmount,
-                    'product_igst_amount' => $productIgstAmount,
+                    'product_gst_amount' => number_format($productTax, 2, '.', ''),
+                    'product_taxable_amount' => number_format($productTaxableAmount, 2, '.', ''),
 
-                    'shipping_cgst_amount' => $shippingCgstAmount,
-                    'shipping_sgst_amount' => $shippingSgstAmount,
-                    'shipping_igst_amount' => $shippingIgstAmount,
-                    'wallet_used' => $walletUsed,
-                    'taxable_amount' => $productTaxableAmount + $shippingTaxable,
+                    'shipping_gst_rate' => number_format($shippingGstRate, 2, '.', ''),
+                    'shipping_gst_amount' => number_format($shippingTax, 2, '.', ''),
+                    'shipping_taxable_amount' => number_format($shippingTaxable, 2, '.', ''),
+
+                    'taxable_amount' => number_format($taxableAmount, 2, '.', ''),
                     'gst_rate' => $gstRate,
                     'tax_type' => $taxType,
-                    'cgst_amount' => $productCgstAmount,
-                    'sgst_amount' => $productSgstAmount,
-                    'igst_amount' => $productIgstAmount,
-                    'paid_online' => $finalAmount,  
-                    'final_amount' => ($afterDiscount + $deliveryCharge)
+
+                    'product_cgst_amount' => number_format($productCgstAmount, 2, '.', ''),
+                    'product_sgst_amount' => number_format($productSgstAmount, 2, '.', ''),
+                    'product_igst_amount' => number_format($productIgstAmount, 2, '.', ''),
+
+                    'shipping_cgst_amount' => number_format($shippingCgstAmount, 2, '.', ''),
+                    'shipping_sgst_amount' => number_format($shippingSgstAmount, 2, '.', ''),
+                    'shipping_igst_amount' => number_format($shippingIgstAmount, 2, '.', ''),
+
+                    'cgst_amount' => number_format($cgstAmount, 2, '.', ''),
+                    'sgst_amount' => number_format($sgstAmount, 2, '.', ''),
+                    'igst_amount' => number_format($igstAmount, 2, '.', ''),
+                    'total_gst_amount' => number_format($totalGstAmount, 2, '.', ''),
+
+                    'paid_online' => number_format($finalAmount, 2, '.', ''),
+                    'paid_total' => number_format($totalOrderAmount, 2, '.', ''),
+                    'final_amount' => number_format($totalOrderAmount, 2, '.', ''),
                 ],
 
                 'address_id' => $request->address_id,
-                
                 'name' => $address->name ?? null,
                 'email' => $address->email ?? $user->email,
                 'mobile' => $address->mobile ?? null,
@@ -647,17 +734,23 @@ class StoreRazorpayPaymentController extends Controller
                 'city' => $address->city ?? null,
                 'state_code' => $address->state_code ?? null,
                 'state' => $address->state ?? null,
+                'country' => $address->country ?? 'India',
                 'address' => $address->address ?? null,
                 'pincode' => $address->pincode ?? null,
-                'taxable_amount' => $productTaxableAmount + $shippingTaxable,
+
+                'taxable_amount' => number_format($taxableAmount, 2, '.', ''),
                 'gst_rate' => $gstRate,
-                'cgst_amount' => $productCgstAmount,
-                'sgst_amount' => $productSgstAmount,
-                'igst_amount' => $productIgstAmount,
+                'cgst_amount' => number_format($cgstAmount, 2, '.', ''),
+                'sgst_amount' => number_format($sgstAmount, 2, '.', ''),
+                'igst_amount' => number_format($igstAmount, 2, '.', ''),
                 'tax_type' => $taxType,
 
+                'advance_paid_amount' => '0.00',
+                'remaining_cod_amount' => '0.00',
+                'is_cod_advance' => false,
+
                 'status' => 'paid',
-                'paid_at' => now()
+                'paid_at' => now(),
             ]);
 
             if (
@@ -683,6 +776,12 @@ class StoreRazorpayPaymentController extends Controller
                 ]);
             }
 
+            if ($payment) {
+                $payment->update([
+                    'order_id' => $order->id,
+                ]);
+            }
+
             $walletTransaction = null;
 
             // WALLET DEDUCT AFTER ORDER CREATE
@@ -694,12 +793,12 @@ class StoreRazorpayPaymentController extends Controller
                     throw new \Exception('Wallet changed, retry');
                 }
 
-                $before = $wallet->balance;
-                $after = $before - $walletUsed;
+                $before = round((float) $wallet->balance, 2);
+                $after = round($before - $walletUsed, 2);
 
                 $wallet->update([
-                    'balance' => $after,
-                    'total_spent' => $wallet->total_spent + $walletUsed
+                    'balance' => number_format($after, 2, '.', ''),
+                    'total_spent' => number_format((float) $wallet->total_spent + $walletUsed, 2, '.', '')
                 ]);
 
                 // StoreWalletTransaction::create([
@@ -707,10 +806,10 @@ class StoreRazorpayPaymentController extends Controller
                     'user_id' => $user->id,
                     'order_id' => $order->id, // âœ… FIXED
                     'type' => 'debit',
-                    'amount' => $walletUsed,
+                    'amount' => number_format($walletUsed, 2, '.', ''),
                     'source' => 'order_payment',
-                    'balance_before' => $before,
-                    'balance_after' => $after,
+                    'balance_before' => number_format($before, 2, '.', ''),
+                    'balance_after' => number_format($after, 2, '.', ''),
                     'note' => 'Wallet used in order #' . $order->id
                 ]);
             }
@@ -722,64 +821,57 @@ class StoreRazorpayPaymentController extends Controller
 
                 foreach ($items as $item) {
 
-                    $product = $products[$item->product_id] ?? null;
-                    if (!$product) {
-                        throw new \Exception('Product not found');
-                    }
-                    $totalWeight += (($product->weight ?? 0) * $item->quantity);
-                    $maxLength = max($maxLength, $product->length ?? 0);
-                    $maxBreadth = max($maxBreadth, $product->breadth ?? 0);
-                    $totalHeight += (($product->height ?? 0) * $item->quantity);
-                    $itemGstRate = $product->gst_rate ?? 0;
+                $product = $products[$item->product_id] ?? null;
 
-                    $itemTax = round(
-                        ($item->total_price * $itemGstRate) / 100,
-                        2
-                    );
-
-                    $itemTaxableAmount = round(
-                        $item->total_price - $itemTax,
-                        2
-                    );
-
-                    $itemCgst = 0;
-                    $itemSgst = 0;
-                    $itemIgst = 0;
-
-                    if ($taxType == 'cgst_sgst') {
-
-                        $itemCgst = round($itemTax / 2, 2);
-                        $itemSgst = round($itemTax / 2, 2);
-
-                    } else {
-
-                        $itemIgst = $itemTax;
-                    }
-
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'product_id' => $item->product_id,
-                        'product_name' => $item->product->name ?? '',
-                        'product_slug' => $item->product->slug ?? '',
-                        'product_image' => $item->product->image ?? '',
-                        'ratti' => $item->ratti,
-                        'quantity' => $item->quantity,
-                        'price' => $item->price_at_time,
-                        'total' => $item->total_price,
-                        'weight' => $product->weight,
-                        'length' => $product->length,
-                        'breadth' => $product->breadth,
-                        'height' => $product->height,
-                        'gst_rate' => $itemGstRate,
-                        'gst_amount' => $itemTax,
-                        'taxable_amount' => $itemTaxableAmount,
-                        'cgst_amount' => $itemCgst,
-                        'sgst_amount' => $itemSgst,
-                        'igst_amount' => $itemIgst,
-                        'tax_type' => $taxType,
-                        'hsn_code' => $product->hsn_code,
-                    ]);
+                if (!$product) {
+                    throw new \Exception('Product not found');
                 }
+
+                $totalWeight += ((float) ($product->weight ?? 0) * (int) $item->quantity);
+                $maxLength = max($maxLength, (float) ($product->length ?? 0));
+                $maxBreadth = max($maxBreadth, (float) ($product->breadth ?? 0));
+                $totalHeight += ((float) ($product->height ?? 0) * (int) $item->quantity);
+
+                $tax = $itemTaxDetails[$item->id] ?? null;
+
+                if (!$tax) {
+                    throw new \Exception('GST calculation missing for order item');
+                }
+
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $item->product_id,
+                    'product_name' => $product->name ?? '',
+                    'product_slug' => $product->slug ?? '',
+                    'product_image' => $product->image ?? '',
+                    'ratti' => $item->ratti !== null
+                        ? number_format((float) $item->ratti, 2, '.', '')
+                        : null,
+                    'quantity' => (int) $item->quantity,
+                    'price' => number_format((float) $item->price_at_time, 2, '.', ''),
+                    'total' => number_format((float) $item->total_price, 2, '.', ''),
+                    'weight' => $product->weight !== null
+                        ? number_format((float) $product->weight, 2, '.', '')
+                        : null,
+                    'length' => $product->length !== null
+                        ? number_format((float) $product->length, 2, '.', '')
+                        : null,
+                    'breadth' => $product->breadth !== null
+                        ? number_format((float) $product->breadth, 2, '.', '')
+                        : null,
+                    'height' => $product->height !== null
+                        ? number_format((float) $product->height, 2, '.', '')
+                        : null,
+                    'gst_rate' => $tax['gst_rate'],
+                    'gst_amount' => number_format($tax['gst_amount'], 2, '.', ''),
+                    'taxable_amount' => number_format($tax['taxable_amount'], 2, '.', ''),
+                    'cgst_amount' => number_format($tax['cgst_amount'], 2, '.', ''),
+                    'sgst_amount' => number_format($tax['sgst_amount'], 2, '.', ''),
+                    'igst_amount' => number_format($tax['igst_amount'], 2, '.', ''),
+                    'tax_type' => $tax['tax_type'],
+                    'hsn_code' => $product->hsn_code,
+                ]);
+            }
 
             $order->update([
                 'total_weight' => $totalWeight,
@@ -807,18 +899,20 @@ class StoreRazorpayPaymentController extends Controller
                     'status' => $order->status,
             
                     'pricing' => [
-                        'subtotal' => $subtotal,
-                        'discount' => $discount,
-                        'taxable_amount' => $productTaxableAmount + $shippingTaxable,
+                        'subtotal' => number_format((float) $subtotal, 2, '.', ''),
+                        'discount' => number_format((float) $discount, 2, '.', ''),
+                        'taxable_amount' => number_format($taxableAmount, 2, '.', ''),
                         'gst_rate' => $gstRate,
                         'tax_type' => $taxType,
-                        'cgst_amount' => $productCgstAmount,
-                        'sgst_amount' => $productSgstAmount,
-                        'igst_amount' => $productIgstAmount,
-                        'wallet_used' => $walletUsed,
-                        'delivery_charge' => $deliveryCharge,
-                        'paid_online' => $finalAmount,
-                        'final_amount' => ($afterDiscount + $deliveryCharge)
+                        'cgst_amount' => number_format($cgstAmount, 2, '.', ''),
+                        'sgst_amount' => number_format($sgstAmount, 2, '.', ''),
+                        'igst_amount' => number_format($igstAmount, 2, '.', ''),
+                        'wallet_used' => number_format($walletUsed, 2, '.', ''),
+                        'delivery_charge' => number_format($deliveryCharge, 2, '.', ''),
+                        'paid_online' => number_format($finalAmount, 2, '.', ''),
+                        'paid_total' => number_format($totalOrderAmount, 2, '.', ''),
+                        'total_gst_amount' => number_format($totalGstAmount, 2, '.', ''),
+                        'final_amount' => number_format($totalOrderAmount, 2, '.', '')
                     ],
             
                     'payment' => $payment ? [
@@ -902,14 +996,16 @@ class StoreRazorpayPaymentController extends Controller
 
             $validatedCart = $this->validateCartItems($items);
 
-            $subtotal = $validatedCart['subtotal'];
+            $subtotal = round((float) $validatedCart['subtotal'], 2);
 
             // DELIVERY
             $deliveryCharge = 0;
 
             if ($request->address_id) {
 
-                $address = AlternativeAddress::find($request->address_id);
+                $address = AlternativeAddress::where('id', $request->address_id)
+                    ->where('user_id', $user->id)
+                    ->first();
 
                 if ($address && $address->state) {
 
@@ -936,12 +1032,11 @@ class StoreRazorpayPaymentController extends Controller
 
                 'breakdown' => [
 
-                    'subtotal' => $subtotal,
+                    'subtotal' => number_format((float) $subtotal, 2, '.', ''),
 
-                    'delivery_charge' => $deliveryCharge,
+                    'delivery_charge' => number_format($deliveryCharge, 2, '.', ''),
 
-                    'final_amount' =>
-                        $subtotal + $deliveryCharge
+                    'final_amount' => number_format($subtotal + $deliveryCharge, 2, '.', '')
                 ]
             ]);
 
@@ -1154,7 +1249,7 @@ class StoreRazorpayPaymentController extends Controller
             ->get()
             ->keyBy('id');
 
-        $subtotal = 0;
+        $subtotal = 0.00;
 
         foreach ($items as $item) {
 
@@ -1168,15 +1263,12 @@ class StoreRazorpayPaymentController extends Controller
                 throw new \Exception('Invalid quantity');
             }
 
-            // STOCK CHECK
             if ($product->stock_qty < $item->quantity) {
-
                 throw new \Exception(
                     $product->name . ' only ' . $product->stock_qty . ' left in stock'
                 );
             }
 
-            // LIVE PRICE
             if (
                 $item->price_at_time === null ||
                 $item->price_at_time <= 0
@@ -1186,12 +1278,40 @@ class StoreRazorpayPaymentController extends Controller
                 );
             }
 
-            $subtotal += $item->total_price;
+            $unitPrice = round((float) $item->price_at_time, 2);
+            $cartTotal = round((float) $item->total_price, 2);
+            $expectedTotal = round(
+                $unitPrice * (int) $item->quantity,
+                2
+            );
+
+            if ($expectedTotal !== $cartTotal) {
+                throw new \Exception(
+                    $product->name . ' cart amount mismatch'
+                );
+            }
+
+            $subtotal = round($subtotal + $cartTotal, 2);
         }
 
-            return [
-            'subtotal' => $subtotal,
-            'products' => $products
+        return [
+            'subtotal' => number_format($subtotal, 2, '.', ''),
+            'products' => $products,
         ];
+    }
+
+    private function calculateInclusiveGst(float $amount, float $gstRate): float
+    {
+        $amount = round(max(0, $amount), 2);
+        $gstRate = round(max(0, $gstRate), 2);
+
+        if ($amount <= 0 || $gstRate <= 0) {
+            return 0.00;
+        }
+
+        return round(
+            ($amount * $gstRate) / (100 + $gstRate),
+            2
+        );
     }
 }

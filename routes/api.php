@@ -225,6 +225,7 @@ Route::middleware(['auth:sanctum', 'session.timeout'])->group(function () {
             Route::get('orders', [OrderApiController::class, 'index']);
             Route::get('orders/{id}', [OrderApiController::class, 'show']);
             Route::post('orders/upload-pdf', [OrderApiController::class, 'uploadPdf']);
+            Route::get('orders/{id}/invoice', [OrderApiController::class, 'getInvoicePdf'])->name('orders.invoice');
 
             /*
             |--------------------------------------------------------------------------

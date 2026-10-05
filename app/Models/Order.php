@@ -30,42 +30,53 @@ class Order extends Model
         'country',
         'address',
         'pincode',
+
         'shipment_id',
         'awb_code',
         'courier_name',
         'shipping_status',
+
         'invoice_sequence',
         'invoice_number',
         'pdf',
+
         'coupon_id',
         'payment_id',
         'order_number',
         'hsn_code',
+
         'subtotal',
         'discount',
         'delivery_charge',
+
         'taxable_amount',
         'gst_rate',
         'cgst_amount',
         'sgst_amount',
         'igst_amount',
         'tax_type',
+
         'wallet_used',
         'advance_paid_amount',
         'remaining_cod_amount',
         'is_cod_advance',
         'paid_amount',
         'total_amount',
+
         'total_weight',
         'box_length',
         'box_breadth',
         'box_height',
+
         'status',
+
         'paid_at',
         'cancelled_at',
         'cancel_reason',
+        'delivered_at',
+        'rto_at',
+
         'price_breakdown',
-        'delivered_at'
     ];
 
     protected $casts = [
@@ -74,39 +85,39 @@ class Order extends Model
         'price_breakdown' => 'array',
 
         // MONEY
-        'subtotal' => 'float',
-        'discount' => 'float',
-        'delivery_charge' => 'float',
-        'advance_paid_amount' => 'float',
-        'remaining_cod_amount' => 'float',
+        'subtotal' => 'decimal:2',
+        'discount' => 'decimal:2',
+        'delivery_charge' => 'decimal:2',
+        'advance_paid_amount' => 'decimal:2',
+        'remaining_cod_amount' => 'decimal:2',
+        'wallet_used' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'total_amount' => 'decimal:2',
+
+        // GST
+        'taxable_amount' => 'decimal:2',
+        'gst_rate' => 'decimal:2',
+        'cgst_amount' => 'decimal:2',
+        'sgst_amount' => 'decimal:2',
+        'igst_amount' => 'decimal:2',
+
+        // COD
         'is_cod_advance' => 'boolean',
-        'wallet_used' => 'float',
-        'paid_amount' => 'float',
-        'total_amount' => 'float',
-        
-        'taxable_amount' => 'float',
-        'gst_rate' => 'float',
-        'cgst_amount' => 'float',
-        'sgst_amount' => 'float',
-        'igst_amount' => 'float',
-        
 
         // BOX
-        'total_weight' => 'float',
-        'box_length' => 'float',
-        'box_breadth' => 'float',
-        'box_height' => 'float',
+        'total_weight' => 'decimal:2',
+        'box_length' => 'decimal:2',
+        'box_breadth' => 'decimal:2',
+        'box_height' => 'decimal:2',
 
         // DATES
         'paid_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'delivered_at' => 'datetime',
-        'rto_at'       => 'datetime',
+        'rto_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-
-    // ================= RELATIONS =================
 
     public function user()
     {
@@ -130,7 +141,10 @@ class Order extends Model
 
     public function addressData()
     {
-        return $this->belongsTo(\App\Models\AlternativeAddress::class, 'address_id');
+        return $this->belongsTo(
+            AlternativeAddress::class,
+            'address_id'
+        );
     }
 
     public function walletTransactions()
@@ -143,13 +157,8 @@ class Order extends Model
         return $this->hasMany(OrderItemCancellation::class);
     }
 
-    // ================= EVENTS =================
-
     protected static function booted()
     {
-        /**
-         * âœ… ORDER CREATED â†’ MAILS
-         */
         static::created(function ($order) {
 
             DB::afterCommit(function () use ($order) {
@@ -162,32 +171,37 @@ class Order extends Model
                         'payment'
                     ]);
 
-                    if (!$order->email && (!$order->user || !$order->user->email)) {
+                    if (
+                        !$order->email &&
+                        (!$order->user || !$order->user->email)
+                    ) {
                         \Log::error('Order/User email missing');
                         return;
                     }
 
-                    // Thank you mail
-                    Mail::to($order->email ?? $order->user->email)
-                        ->send(new OrderThankYouMail($order));
+                    Mail::to(
+                        $order->email ??
+                        $order->user->email
+                    )->send(
+                        new OrderThankYouMail($order)
+                    );
 
-                    // Order details mail
-                    Mail::to($order->email ?? $order->user->email)
-                        ->send(new OrderDetailsMail($order));
+                    Mail::to(
+                        $order->email ??
+                        $order->user->email
+                    )->send(
+                        new OrderDetailsMail($order)
+                    );
 
                 } catch (\Exception $e) {
+
                     \Log::error('Order Mail Failed', [
                         'error' => $e->getMessage()
                     ]);
                 }
-
             });
-
         });
 
-        /**
-         * âœ… ORDER UPDATED â†’ CANCEL / DELIVER MAIL
-         */
         static::updated(function ($order) {
 
             DB::afterCommit(function () use ($order) {
@@ -201,34 +215,43 @@ class Order extends Model
                         'walletTransactions'
                     ]);
 
-                    if (!$order->email && (!$order->user || !$order->user->email)) {
+                    if (
+                        !$order->email &&
+                        (!$order->user || !$order->user->email)
+                    ) {
                         \Log::error('Order/User email missing');
                         return;
                     }
 
-                    // ðŸ”¥ DELIVERED MAIL
                     if ($order->status === 'delivered') {
 
-                        // duplicate mail avoid
                         if (!$order->delivered_at) {
+
                             $order->updateQuietly([
                                 'delivered_at' => now()
                             ]);
                         }
 
-                        Mail::to($order->email ?? $order->user->email)
-                            ->send(new OrderDeliveredMail($order));
+                        Mail::to(
+                            $order->email ??
+                            $order->user->email
+                        )->send(
+                            new OrderDeliveredMail($order)
+                        );
 
                         \Log::info('Delivered mail sent', [
                             'order_id' => $order->id
                         ]);
                     }
 
-                    // ðŸ”¥ CANCEL MAIL
                     if ($order->status === 'cancelled') {
 
-                        Mail::to($order->email ?? $order->user->email)
-                            ->send(new OrderCancelledMail($order));
+                        Mail::to(
+                            $order->email ??
+                            $order->user->email
+                        )->send(
+                            new OrderCancelledMail($order)
+                        );
 
                         \Log::info('Cancel mail sent', [
                             'order_id' => $order->id
@@ -236,13 +259,12 @@ class Order extends Model
                     }
 
                 } catch (\Exception $e) {
+
                     \Log::error('Order Mail Failed', [
                         'error' => $e->getMessage()
                     ]);
                 }
-
             });
-
         });
     }
 }

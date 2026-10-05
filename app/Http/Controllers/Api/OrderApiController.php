@@ -475,4 +475,14 @@ class OrderApiController extends Controller
             'pdf' => asset('storage/' . $filePath)
         ]);
     }
+
+    public function getInvoicePdf($id, OrderPdfService $pdfService)
+    {
+        $path = $pdfService->generateAndSave($id);
+
+        return response()->json([
+            'status' => true,
+            'pdf_url' => asset('storage/' . $path)
+        ]);
+    }
 }
