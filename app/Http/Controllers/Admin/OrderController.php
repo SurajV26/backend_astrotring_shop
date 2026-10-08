@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Mail\OrderDeliveryTrackMail;
 use Illuminate\Support\Facades\Mail;
+use App\Exports\OrdersExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class OrderController extends Controller
 {
@@ -103,6 +105,64 @@ class OrderController extends Controller
             )
             ->rawColumns(['user', 'products', 'status'])
             ->make(true);
+    }
+
+    public function export(Request $request)
+    {
+        $request->validate([
+            'from_date' => [
+                'required',
+                'date_format:Y-m-d',
+            ],
+
+            'to_date' => [
+                'required',
+                'date_format:Y-m-d',
+                'after_or_equal:from_date',
+            ],
+
+            'status' => [
+                'nullable',
+                'in:pending,paid,packed,shipped,delivered,rto,cancelled',
+            ],
+
+            'user_id' => [
+                'nullable',
+                'integer',
+                'exists:users,id',
+            ],
+
+            'category_id' => [
+                'nullable',
+                'integer',
+                'exists:categories,id',
+            ],
+
+            'product_id' => [
+                'nullable',
+                'integer',
+                'exists:products,id',
+            ],
+        ]);
+
+        $fileName = 'orders_' .
+            $request->from_date .
+            '_to_' .
+            $request->to_date .
+            '.xlsx';
+
+        return Excel::download(
+            new OrdersExport(
+                $request->from_date,
+                $request->to_date,
+                $request->status,
+                $request->user_id,
+                $request->category_id,
+                $request->product_id,
+                auth()->user()
+            ),
+            $fileName
+        );
     }
 
     public function getView(Request $request, $id)

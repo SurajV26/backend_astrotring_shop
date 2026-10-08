@@ -312,6 +312,7 @@ Route::namespace('App\Http\Controllers\Admin')
                         Route::post('{id}/send-mail', 'OrderController@sendMail')->name('send-mail');
                         Route::get('{id}/invoice/view', 'OrderController@viewPdf')->name('invoice.view');
                         Route::get('{id}/invoice/download', 'OrderController@downloadPdf')->name('invoice.download');
+                        Route::get('export', 'OrderController@export')->name('export');
                     });
 
                 Route::prefix('settings')
