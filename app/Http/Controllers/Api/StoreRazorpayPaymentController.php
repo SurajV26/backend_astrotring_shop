@@ -753,25 +753,60 @@ class StoreRazorpayPaymentController extends Controller
                 'paid_at' => now(),
             ]);
 
+            /*
+            |--------------------------------------------------------------------------
+            | Employee Commission
+            |--------------------------------------------------------------------------
+            */
             if (
                 $couponId &&
                 $coupon &&
                 $coupon->employee_id &&
                 $coupon->employee_id != 1
             ) {
+                $employee = $coupon->employee;
 
-                $percentage = $coupon->employee->commission_percentage ?? 0;
+                $percentage = $employee?->commission_percentage ?? 0;
 
-                $commissionAmount =
-                    ($order->total_amount * $percentage) / 100;
+                $percentage = round(
+                    (float) $percentage,
+                    2
+                );
+
+                $orderAmount = round(
+                    (float) $order->total_amount,
+                    2
+                );
+
+                $commissionAmount = round(
+                    ($orderAmount * $percentage) / 100,
+                    2,
+                    PHP_ROUND_HALF_UP
+                );
 
                 EmployeeCommission::create([
                     'employee_id' => $coupon->employee_id,
                     'order_id' => $order->id,
                     'coupon_id' => $coupon->id,
-                    'order_amount' => $order->total_amount,
-                    'commission_percentage' => $percentage,
-                    'commission_amount' => round($commissionAmount, 2),
+                    'order_amount' => number_format(
+                        $orderAmount,
+                        2,
+                        '.',
+                        ''
+                    ),
+                    'commission_percentage' => number_format(
+                        $percentage,
+                        2,
+                        '.',
+                        ''
+                    ),
+                    'commission_amount' => number_format(
+                        $commissionAmount,
+                        2,
+                        '.',
+                        ''
+                    ),
+
                     'status' => 'delivery_pending',
                 ]);
             }

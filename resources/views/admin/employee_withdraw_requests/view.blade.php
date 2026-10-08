@@ -5,7 +5,6 @@
 @endsection
 
 @section('content')
-
     <div class="row">
         <div class="col-12">
             <div class="page-title-box">
@@ -100,6 +99,15 @@
 
                         <tr>
                             <th>
+                                Processed By
+                            </th>
+                            <td>
+                                {{ $request->processedBy?->name ?? '-' }}
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th>
                                 Created At
                             </th>
                             <td>
@@ -118,38 +126,31 @@
 
                     </table>
 
-                    @if(auth()->user()->type != 'employee' && $request->status == 'pending')
-
-                        <form method="POST"
-                            action="{{ route('admin.employee_withdraw_requests.approve', $request->id) }}"
+                    @if (auth()->user()->type != 'employee' && $request->status == 'pending')
+                        <form method="POST" action="{{ route('admin.employee_withdraw_requests.approve', $request->id) }}"
                             style="display:inline-block">
 
                             @csrf
 
-                            <button type="submit"
-                                class="btn btn-success">
+                            <button type="submit" class="btn btn-success">
                                 Approve
                             </button>
 
                         </form>
 
-                        <form method="POST"
-                            action="{{ route('admin.employee_withdraw_requests.reject', $request->id) }}"
+                        <form method="POST" action="{{ route('admin.employee_withdraw_requests.reject', $request->id) }}"
                             style="display:inline-block">
 
                             @csrf
 
-                            <button type="submit"
-                                class="btn btn-danger">
+                            <button type="submit" class="btn btn-danger">
                                 Reject
                             </button>
 
                         </form>
-
                     @endif
 
-                    <a href="{{ route('admin.employee_withdraw_requests.index') }}"
-                        class="btn btn-secondary">
+                    <a href="{{ route('admin.employee_withdraw_requests.index') }}" class="btn btn-secondary">
                         Back
                     </a>
 
@@ -160,5 +161,4 @@
         </div>
 
     </div>
-
 @endsection
