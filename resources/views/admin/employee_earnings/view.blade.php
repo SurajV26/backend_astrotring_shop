@@ -76,6 +76,19 @@
                                 </tr>
 
                                 <tr>
+                                    <th>
+                                        Order Delivered At
+                                    </th>
+                                    <td>
+                                        @if ($earning->order?->delivered_at)
+                                            {{ \Carbon\Carbon::parse($earning->order->delivered_at)->format('d M Y h:i A') }}
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
+                                </tr>
+
+                                <tr>
                                     <th width="220">
                                         Created At
                                     </th>
@@ -125,6 +138,30 @@
                                     </th>
                                     <td>
                                         ₹ {{ number_format($earning->commission_amount, 2) }}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th>
+                                        Withdrawal Requested
+                                    </th>
+                                    <td>
+                                        @if ($earning->is_withdraw_requested)
+                                            <span class="badge bg-info">Yes</span>
+                                        @else
+                                            <span class="badge bg-secondary">No</span>
+                                        @endif
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th>
+                                        Withdrawal Requested At
+                                    </th>
+                                    <td>
+                                        {{ $earning->withdraw_requested_at
+                                            ? \Carbon\Carbon::parse($earning->withdraw_requested_at)->format('d M Y h:i A')
+                                            : '-' }}
                                     </td>
                                 </tr>
 

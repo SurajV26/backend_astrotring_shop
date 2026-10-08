@@ -531,20 +531,28 @@ class StoreCodOrderController extends Controller
             ]);
 
             /*
-             * Employee commission
-             */
+            |--------------------------------------------------------------------------
+            | Employee Commission
+            |--------------------------------------------------------------------------
+            */
             if (
                 $couponId &&
                 $coupon &&
                 $coupon->employee_id &&
                 $coupon->employee_id != 1
             ) {
+                $employee = $coupon->employee;
+
                 $percentage = $this->normalizeRate(
-                    $coupon->employee->commission_percentage ?? 0
+                    $employee?->commission_percentage ?? 0
+                );
+
+                $orderAmountCents = $this->moneyToCents(
+                    $order->total_amount
                 );
 
                 $commissionCents = (int) round(
-                    ($finalAmountCents * $percentage) / 100,
+                    ($orderAmountCents * $percentage) / 100,
                     0,
                     PHP_ROUND_HALF_UP
                 );
@@ -553,7 +561,7 @@ class StoreCodOrderController extends Controller
                     'employee_id' => $coupon->employee_id,
                     'order_id' => $order->id,
                     'coupon_id' => $coupon->id,
-                    'order_amount' => $finalAmount,
+                    'order_amount' => $order->total_amount,
                     'commission_percentage' => $this->formatRate($percentage),
                     'commission_amount' => $this->formatCents($commissionCents),
                     'status' => 'delivery_pending',

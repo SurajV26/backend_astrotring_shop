@@ -68,6 +68,7 @@
                                 <option value=""></option>
                                 <option value="pending">Pending</option>
                                 <option value="paid">Paid</option>
+                                <option value="cancelled">Cancelled</option>
 
                             </select>
                         </div>
@@ -93,7 +94,7 @@
                                     ₹ {{ number_format($availableCommission, 2) }}
                                 </h3>
                                 <small class="text-muted">
-                                    Delivered orders commission available for withdrawal.
+                                    Commission from delivered orders available for withdrawal after 15 days.
                                 </small>
                             </div>
                             <div class="col-md-4 text-end">

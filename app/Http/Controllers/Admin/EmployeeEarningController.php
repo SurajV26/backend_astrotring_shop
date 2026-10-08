@@ -95,9 +95,20 @@ class EmployeeEarningController extends AdminController
                     );
             })
             ->addColumn('status_badge', function ($row) {
-                return $row->status == 'paid'
-                    ? '<span class="badge bg-success">Paid</span>'
-                    : '<span class="badge bg-warning">Pending</span>';
+                return match ($row->status) {
+                    'delivery_pending' =>
+                        '<span class="badge bg-info">Delivery Pending</span>',
+                    'pending' =>
+                        '<span class="badge bg-warning">Commission Pending</span>',
+                    'paid' =>
+                        '<span class="badge bg-success">Paid</span>',
+                    'cancelled' =>
+                        '<span class="badge bg-danger">Cancelled</span>',
+                    default =>
+                        '<span class="badge bg-secondary">'
+                        . e(ucfirst(str_replace('_', ' ', $row->status)))
+                        . '</span>',
+                };
             })
             ->addColumn('action', function ($row) {
                 return '
@@ -139,6 +150,11 @@ class EmployeeEarningController extends AdminController
 
     public function markPaid($id)
     {
+
+        if (auth()->user()->type == 'employee') {
+            abort(403);
+        }
+
         $earning = EmployeeCommission::findOrFail($id);
 
         if ($earning->status != 'pending') {
