@@ -20,6 +20,7 @@ class OrderItem extends Model
         'ratti',
         'quantity',
         'price',
+        'discount_amount',
         'total',
         'weight',
         'length',
@@ -40,6 +41,7 @@ class OrderItem extends Model
         'quantity' => 'integer',
 
         'price' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
 
         'weight' => 'decimal:2',

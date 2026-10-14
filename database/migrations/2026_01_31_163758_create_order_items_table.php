@@ -26,6 +26,7 @@ return new class extends Migration
             $table->integer('quantity');
 
             $table->decimal('price', 12, 2);
+            $table->decimal('discount_amount', 12, 2)->default(0);
             $table->decimal('total', 12, 2);
 
             $table->decimal('weight', 8, 2)->nullable();

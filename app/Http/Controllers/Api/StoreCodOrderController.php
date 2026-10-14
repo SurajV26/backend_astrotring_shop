@@ -1,12 +1,9 @@
 <?php
-
 namespace App\Http\Controllers\Api;
-
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
 use App\Models\AlternativeAddress;
 use App\Models\EmployeeCommission;
 use App\Models\Cart;
@@ -17,356 +14,271 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
-
 class StoreCodOrderController extends Controller
 {
     public function placeOrder(Request $request)
     {
         DB::beginTransaction();
-
         try {
             $user = $request->user();
-
             $request->validate([
                 'coupon_code' => 'nullable|string',
                 'address_id' => 'required|exists:alternative_addresses,id',
             ]);
-
             $address = AlternativeAddress::where('id', $request->address_id)
                 ->where('user_id', $user->id)
                 ->first();
-
             if (!$address) {
                 throw new \Exception('Invalid delivery address');
             }
-
             $cart = Cart::where('user_id', $user->id)->first();
-
             if (!$cart) {
                 throw new \Exception('Cart not found');
             }
-
             $items = CartItem::where('cart_id', $cart->id)->get();
-
             if ($items->isEmpty()) {
                 throw new \Exception('Cart empty');
             }
-
             /*
              * Lock all products before calculating price/stock/tax.
              */
             $productIds = $items->pluck('product_id')->unique();
-
             $products = Product::whereIn('id', $productIds)
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
-
             /*
              * Use integer paise for all money calculations.
              * This avoids floating-point errors such as 99.9999999.
              */
             $subtotalCents = 0;
-
             foreach ($items as $item) {
                 $product = $products[$item->product_id] ?? null;
-
                 if (!$product) {
                     throw new \Exception('Product removed from store');
                 }
-
                 if (($product->status ?? 1) != 1) {
                     throw new \Exception($product->name . ' unavailable');
                 }
-
                 $quantity = (int) $item->quantity;
-
                 if ($quantity <= 0) {
                     throw new \Exception($product->name . ' has invalid quantity');
                 }
-
                 $stockQty = (int) $product->stock_qty;
-
                 if ($stockQty <= 0) {
                     throw new \Exception($product->name . ' out of stock');
                 }
-
                 if ($quantity > $stockQty) {
                     throw new \Exception(
                         $product->name . ' only ' . $stockQty . ' left in stock'
                     );
                 }
-
                 $priceCents = $this->moneyToCents($item->price_at_time);
                 $itemTotalCents = $this->moneyToCents($item->total_price);
-
                 if ($priceCents <= 0) {
                     throw new \Exception($product->name . ' price missing in cart');
                 }
-
                 $expectedTotalCents = $priceCents * $quantity;
-
                 if ($expectedTotalCents !== $itemTotalCents) {
                     throw new \Exception($product->name . ' cart amount mismatch');
                 }
-
                 $subtotalCents += $itemTotalCents;
             }
-
-            /*
-             * Coupon calculation - still based on product subtotal,
-             * exactly as the existing business flow does.
-             */
+            // Original taxable base is derived from GST-inclusive product totals.
+            $originalProductTaxableCents = 0;
+            foreach ($items as $item) {
+                $product = $products[$item->product_id] ?? null;
+                if (!$product) {
+                    throw new \Exception('Product not found while deriving taxable amount');
+                }
+                $originalTax = $this->splitInclusiveGst(
+                    $this->moneyToCents($item->total_price),
+                    $this->normalizeRate($product->gst_rate ?? 0)
+                );
+                $originalProductTaxableCents += $originalTax['taxable_cents'];
+            }
+            /* Coupon discount applies to the GST-exclusive taxable value. */
             $discountCents = 0;
             $couponId = null;
             $coupon = null;
-
             if ($request->coupon_code) {
                 $coupon = Coupon::where('code', $request->coupon_code)
                     ->where('status', 1)
                     ->whereDate('expiry_date', '>=', now())
                     ->lockForUpdate()
                     ->first();
-
                 if (!$coupon) {
                     throw new \Exception('Invalid coupon');
                 }
-
                 if (!in_array($coupon->payment_type, ['cod', 'both'], true)) {
                     throw new \Exception(
                         'This coupon is applicable only for COD orders'
                     );
                 }
-
                 $couponMinAmountCents = $this->moneyToCents($coupon->min_amount ?? 0);
-
                 if ($couponMinAmountCents > 0 && $subtotalCents < $couponMinAmountCents) {
                     throw new \Exception('Coupon minimum amount not met');
                 }
-
                 if ($coupon->discount_type === 'flat') {
                     $discountCents = $this->moneyToCents($coupon->discount_value ?? 0);
                 } else {
                     $discountRate = $this->normalizeRate($coupon->discount_value ?? 0);
-
                     $discountCents = (int) round(
-                        ($subtotalCents * $discountRate) / 100,
+                        ($originalProductTaxableCents * $discountRate) / 100,
                         0,
                         PHP_ROUND_HALF_UP
                     );
-
                     $maxDiscountCents = $this->moneyToCents($coupon->max_discount ?? 0);
-
                     if ($maxDiscountCents > 0) {
                         $discountCents = min($discountCents, $maxDiscountCents);
                     }
                 }
-
                 $discountCents = max(
                     0,
-                    min($discountCents, $subtotalCents)
+                    min($discountCents, $originalProductTaxableCents)
                 );
-
                 $couponId = $coupon->id;
             }
-
-            $afterDiscountCents = max(
-                0,
-                $subtotalCents - $discountCents
-            );
-
             /*
              * Delivery charge
              */
             $deliveryChargeCents = 0;
-
             $deliveryRate = DeliveryRate::where('state', $address->state)
                 ->where('status', 1)
                 ->first();
-
             if ($deliveryRate) {
                 $deliveryChargeCents = $subtotalCents >= 80000
                     ? 0
                     : $this->moneyToCents($deliveryRate->delivery_charge ?? 0);
             }
-
             /*
              * COD charge
              */
             $codChargeCents = $this->moneyToCents(
                 config('services.cod_charge', 0)
             );
-
             $walletUsedCents = 0;
-
-            $finalAmountCents =
-                $afterDiscountCents +
-                $deliveryChargeCents +
-                $codChargeCents;
-
             /*
-             * Tax calculation.
-             * Product, delivery and COD prices are GST-inclusive.
-             */
+            |--------------------------------------------------------------------------
+            | TAX CALCULATION
+            |--------------------------------------------------------------------------
+            | Product prices, delivery charge and COD charge are GST-inclusive.
+            |
+            | Coupon discount is allocated proportionately across product items
+            | BEFORE calculating product GST.
+            |--------------------------------------------------------------------------
+            */
             $sellerState = 'Delhi';
-
             $taxType = strtolower(trim((string) $address->state)) ===
                 strtolower(trim($sellerState))
                 ? 'cgst_sgst'
                 : 'igst';
-
-            $productTaxCents = 0;
-            $productTaxableCents = 0;
-
-            $shippingTaxCents = 0;
-            $shippingTaxableCents = 0;
-
-            $codTaxCents = 0;
-            $codTaxableCents = 0;
-
-            $productCgstCents = 0;
-            $productSgstCents = 0;
-            $productIgstCents = 0;
-
-            $shippingCgstCents = 0;
-            $shippingSgstCents = 0;
-            $shippingIgstCents = 0;
-
-            $codCgstCents = 0;
-            $codSgstCents = 0;
-            $codIgstCents = 0;
-
-            $hsnCodes = [];
-            $itemTaxDetails = [];
-
             /*
-             * ITEM-WISE PRODUCT GST
-             */
-            foreach ($items as $item) {
-                $product = $products[$item->product_id] ?? null;
-
-                if (!$product) {
-                    throw new \Exception('Product not found');
-                }
-
-                $itemTotalCents = $this->moneyToCents($item->total_price);
-                $itemGstRate = $this->normalizeRate($product->gst_rate ?? 0);
-
-                if ($product->hsn_code) {
-                    $hsnCodes[] = $product->hsn_code;
-                }
-
-                $itemTax = $this->splitInclusiveGst(
-                    $itemTotalCents,
-                    $itemGstRate
-                );
-
-                $itemTaxCents = $itemTax['gst_cents'];
-                $itemTaxableCents = $itemTax['taxable_cents'];
-
-                $itemCgstCents = 0;
-                $itemSgstCents = 0;
-                $itemIgstCents = 0;
-
-                if ($taxType === 'cgst_sgst') {
-                    $itemCgstCents = intdiv($itemTaxCents, 2);
-                    $itemSgstCents = $itemTaxCents - $itemCgstCents;
-                } else {
-                    $itemIgstCents = $itemTaxCents;
-                }
-
-                $productTaxCents += $itemTaxCents;
-                $productTaxableCents += $itemTaxableCents;
-
-                $productCgstCents += $itemCgstCents;
-                $productSgstCents += $itemSgstCents;
-                $productIgstCents += $itemIgstCents;
-
-                /*
-                 * Save the exact same calculated values that will be used
-                 * in order_items. No second GST calculation later.
-                 */
-                $itemTaxDetails[$item->id] = [
-                    'gst_rate' => $itemGstRate,
-                    'gst_cents' => $itemTaxCents,
-                    'taxable_cents' => $itemTaxableCents,
-                    'cgst_cents' => $itemCgstCents,
-                    'sgst_cents' => $itemSgstCents,
-                    'igst_cents' => $itemIgstCents,
-                    'tax_type' => $taxType,
-                ];
-            }
-
-            $hsnCodes = array_values(array_unique($hsnCodes));
+            |--------------------------------------------------------------------------
+            | PRODUCT GST AFTER DISCOUNT
+            |--------------------------------------------------------------------------
+            */
+            $productTax = $this->calculateProductTaxDetails(
+                $items,
+                $products,
+                $discountCents,
+                $subtotalCents,
+                $taxType
+            );
+            $productTaxCents = $productTax['gst_cents'];
+            $productTaxableCents = $productTax['taxable_cents'];
+            $afterDiscountCents = $productTax['total_cents'];
+            $finalAmountCents = $afterDiscountCents + $deliveryChargeCents + $codChargeCents;
+            $productCgstCents = $productTax['cgst_cents'];
+            $productSgstCents = $productTax['sgst_cents'];
+            $productIgstCents = $productTax['igst_cents'];
+            $itemTaxDetails = $productTax['items'];
+            $hsnCodes = $productTax['hsn_codes'];
             $hsnCode = implode(',', $hsnCodes);
-
             /*
-             * DELIVERY GST - 18%
-             */
+            |--------------------------------------------------------------------------
+            | DELIVERY GST - 18%
+            |--------------------------------------------------------------------------
+            */
             $shippingGstRate = $this->normalizeRate(18);
-
             $shippingTax = $this->splitInclusiveGst(
                 $deliveryChargeCents,
                 $shippingGstRate
             );
-
             $shippingTaxCents = $shippingTax['gst_cents'];
             $shippingTaxableCents = $shippingTax['taxable_cents'];
-
+            $shippingCgstCents = 0;
+            $shippingSgstCents = 0;
+            $shippingIgstCents = 0;
             if ($taxType === 'cgst_sgst') {
-                $shippingCgstCents = intdiv($shippingTaxCents, 2);
-                $shippingSgstCents = $shippingTaxCents - $shippingCgstCents;
+                $shippingCgstCents = intdiv(
+                    $shippingTaxCents,
+                    2
+                );
+                $shippingSgstCents =
+                    $shippingTaxCents -
+                    $shippingCgstCents;
             } else {
-                $shippingIgstCents = $shippingTaxCents;
+                $shippingIgstCents =
+                    $shippingTaxCents;
             }
-
             /*
-             * COD GST - 18%
-             */
+            |--------------------------------------------------------------------------
+            | COD GST - 18%
+            |--------------------------------------------------------------------------
+            */
             $codGstRate = $this->normalizeRate(18);
-
             $codTax = $this->splitInclusiveGst(
                 $codChargeCents,
                 $codGstRate
             );
-
             $codTaxCents = $codTax['gst_cents'];
             $codTaxableCents = $codTax['taxable_cents'];
-
+            $codCgstCents = 0;
+            $codSgstCents = 0;
+            $codIgstCents = 0;
             if ($taxType === 'cgst_sgst') {
-                $codCgstCents = intdiv($codTaxCents, 2);
-                $codSgstCents = $codTaxCents - $codCgstCents;
+                $codCgstCents = intdiv(
+                    $codTaxCents,
+                    2
+                );
+                $codSgstCents =
+                    $codTaxCents -
+                    $codCgstCents;
             } else {
-                $codIgstCents = $codTaxCents;
+                $codIgstCents =
+                    $codTaxCents;
             }
-
             /*
-             * ORDER-LEVEL GST SUMMARY
-             */
+            |--------------------------------------------------------------------------
+            | ORDER-LEVEL GST SUMMARY
+            |--------------------------------------------------------------------------
+            */
             $taxableAmountCents =
                 $productTaxableCents +
                 $shippingTaxableCents +
                 $codTaxableCents;
-
             $cgstAmountCents =
                 $productCgstCents +
                 $shippingCgstCents +
                 $codCgstCents;
-
             $sgstAmountCents =
                 $productSgstCents +
                 $shippingSgstCents +
                 $codSgstCents;
-
             $igstAmountCents =
                 $productIgstCents +
                 $shippingIgstCents +
                 $codIgstCents;
-
+            $totalGstAmountCents =
+                $cgstAmountCents +
+                $sgstAmountCents +
+                $igstAmountCents;
             /*
-             * For multiple products with different GST rates, this is the
-             * effective product GST rate. Single-rate orders stay exact.
-             */
+            |--------------------------------------------------------------------------
+            | EFFECTIVE PRODUCT GST RATE
+            |--------------------------------------------------------------------------
+            */
             $gstRate = $productTaxableCents > 0
                 ? round(
                     ($productTaxCents / $productTaxableCents) * 100,
@@ -374,12 +286,10 @@ class StoreCodOrderController extends Controller
                     PHP_ROUND_HALF_UP
                 )
                 : 0.00;
-
             /*
              * Payment record
              */
             $finalAmount = $this->formatCents($finalAmountCents);
-
             $payment = Payment::create([
                 'user_id' => $user->id,
                 'platform' => 'astrotring_store',
@@ -398,6 +308,10 @@ class StoreCodOrderController extends Controller
                 'payment_request_data' => [
                     'subtotal' => $this->formatCents($subtotalCents),
                     'discount' => $this->formatCents($discountCents),
+                    'coupon_discount_taxable_amount' => $this->formatCents($discountCents),
+                    'original_taxable_amount' => $this->formatCents($productTax['original_taxable_cents']),
+                    'product_taxable_amount' => $this->formatCents($productTaxableCents),
+                    'product_gst_amount' => $this->formatCents($productTaxCents),
                     'delivery_charge' => $this->formatCents($deliveryChargeCents),
                     'cod_charge' => $this->formatCents($codChargeCents),
                     'final_amount' => $finalAmount,
@@ -406,19 +320,15 @@ class StoreCodOrderController extends Controller
                     'type' => 'cash_on_delivery',
                 ],
             ]);
-
             /*
              * Invoice number
              */
             $start = (int) env('INVOICE_START_NUMBER', 1);
-
             $usedNumbers = Order::whereNotNull('invoice_sequence')
                 ->orderBy('invoice_sequence')
                 ->pluck('invoice_sequence')
                 ->toArray();
-
             $nextInvoiceSequence = $start;
-
             foreach ($usedNumbers as $number) {
                 if ((int) $number === $nextInvoiceSequence) {
                     $nextInvoiceSequence++;
@@ -426,7 +336,6 @@ class StoreCodOrderController extends Controller
                     break;
                 }
             }
-
             /*
              * ORDER MASTER RECORD
              */
@@ -435,7 +344,6 @@ class StoreCodOrderController extends Controller
                 'user_name' => $user->name,
                 'coupon_id' => $couponId,
                 'payment_id' => $payment->id,
-
                 'order_number' => 'ORD-' . strtoupper(uniqid()),
                 'invoice_sequence' => $nextInvoiceSequence,
                 'invoice_number' => 'AT-COD-' . str_pad(
@@ -444,68 +352,61 @@ class StoreCodOrderController extends Controller
                     '0',
                     STR_PAD_LEFT
                 ),
-
                 'hsn_code' => $hsnCode,
-
                 'subtotal' => $this->formatCents($subtotalCents),
                 'discount' => $this->formatCents($discountCents),
                 'delivery_charge' => $this->formatCents($deliveryChargeCents),
-
                 'wallet_used' => $this->formatCents($walletUsedCents),
                 'advance_paid_amount' => '0.00',
                 'remaining_cod_amount' => $finalAmount,
                 'is_cod_advance' => false,
                 'paid_amount' => '0.00',
-
                 'total_amount' => $finalAmount,
-
                 'price_breakdown' => [
                     'subtotal' => $this->formatCents($subtotalCents),
                     'coupon_discount' => $this->formatCents($discountCents),
+                    'coupon_discount_taxable_amount' => $this->formatCents($discountCents),
+                    'product_gross_amount' => $this->formatCents($subtotalCents),
+                    'product_original_taxable_amount' => $this->formatCents($productTax['original_taxable_cents']),
+                    'product_original_gst_amount' => $this->formatCents($productTax['original_gst_cents']),
+                    'product_net_taxable_amount' => $this->formatCents($productTaxableCents),
+                    'product_gst_savings' => $this->formatCents(max(0, $productTax['original_gst_cents'] - $productTaxCents)),
+                    'product_net_amount' => $this->formatCents($afterDiscountCents),
                     'delivery_charge' => $this->formatCents($deliveryChargeCents),
                     'cod_charge' => $this->formatCents($codChargeCents),
-
                     'product_taxable_amount' => $this->formatCents($productTaxableCents),
                     'product_gst_amount' => $this->formatCents($productTaxCents),
-
+                    'item_tax_details' => [],
                     'shipping_gst_rate' => $this->formatRate($shippingGstRate),
                     'shipping_taxable_amount' => $this->formatCents($shippingTaxableCents),
                     'shipping_gst_amount' => $this->formatCents($shippingTaxCents),
-
                     'cod_gst_rate' => $this->formatRate($codGstRate),
                     'cod_taxable_amount' => $this->formatCents($codTaxableCents),
                     'cod_gst_amount' => $this->formatCents($codTaxCents),
-
                     'product_cgst_amount' => $this->formatCents($productCgstCents),
                     'product_sgst_amount' => $this->formatCents($productSgstCents),
                     'product_igst_amount' => $this->formatCents($productIgstCents),
-
                     'shipping_cgst_amount' => $this->formatCents($shippingCgstCents),
                     'shipping_sgst_amount' => $this->formatCents($shippingSgstCents),
                     'shipping_igst_amount' => $this->formatCents($shippingIgstCents),
-
                     'cod_cgst_amount' => $this->formatCents($codCgstCents),
                     'cod_sgst_amount' => $this->formatCents($codSgstCents),
                     'cod_igst_amount' => $this->formatCents($codIgstCents),
-
                     'taxable_amount' => $this->formatCents($taxableAmountCents),
                     'gst_rate' => $this->formatRate($gstRate),
                     'tax_type' => $taxType,
-
                     'cgst_amount' => $this->formatCents($cgstAmountCents),
                     'sgst_amount' => $this->formatCents($sgstAmountCents),
                     'igst_amount' => $this->formatCents($igstAmountCents),
                     'total_gst_amount' => $this->formatCents(
                         $cgstAmountCents + $sgstAmountCents + $igstAmountCents
                     ),
-
                     'wallet_used' => $this->formatCents($walletUsedCents),
                     'advance_paid_amount' => '0.00',
                     'remaining_cod_amount' => $finalAmount,
                     'paid_amount' => '0.00',
                     'final_amount' => $finalAmount,
                 ],
-
                 'address_id' => $address->id,
                 'name' => $address->name,
                 'email' => $address->email ?? $user->email,
@@ -517,19 +418,16 @@ class StoreCodOrderController extends Controller
                 'country' => $address->country ?? 'India',
                 'address' => $address->address,
                 'pincode' => $address->pincode,
-
                 'taxable_amount' => $this->formatCents($taxableAmountCents),
                 'gst_rate' => $this->formatRate($gstRate),
                 'cgst_amount' => $this->formatCents($cgstAmountCents),
                 'sgst_amount' => $this->formatCents($sgstAmountCents),
                 'igst_amount' => $this->formatCents($igstAmountCents),
                 'tax_type' => $taxType,
-
                 'status' => 'pending',
                 'shipping_status' => 'pending',
                 'paid_at' => null,
             ]);
-
             /*
             |--------------------------------------------------------------------------
             | Employee Commission
@@ -542,21 +440,17 @@ class StoreCodOrderController extends Controller
                 $coupon->employee_id != 1
             ) {
                 $employee = $coupon->employee;
-
                 $percentage = $this->normalizeRate(
                     $employee?->commission_percentage ?? 0
                 );
-
                 $orderAmountCents = $this->moneyToCents(
                     $order->total_amount
                 );
-
                 $commissionCents = (int) round(
                     ($orderAmountCents * $percentage) / 100,
                     0,
                     PHP_ROUND_HALF_UP
                 );
-
                 EmployeeCommission::create([
                     'employee_id' => $coupon->employee_id,
                     'order_id' => $order->id,
@@ -567,32 +461,26 @@ class StoreCodOrderController extends Controller
                     'status' => 'delivery_pending',
                 ]);
             }
-
             $payment->update([
                 'order_id' => $order->id,
             ]);
-
             /*
              * STOCK UPDATE
              */
             foreach ($items as $item) {
                 $product = $products[$item->product_id];
-
                 $newStock = (int) $product->stock_qty - (int) $item->quantity;
                 $stockStatus = 'in_stock';
-
                 if ($newStock <= 0) {
                     $stockStatus = 'out_of_stock';
                 } elseif ($newStock <= 5) {
                     $stockStatus = 'few_left';
                 }
-
                 $product->update([
                     'stock_qty' => $newStock,
                     'stock_status' => $stockStatus,
                 ]);
             }
-
             /*
              * PACKAGE DIMENSIONS + ORDER ITEMS
              * GST values come from $itemTaxDetails so the same calculation
@@ -602,90 +490,113 @@ class StoreCodOrderController extends Controller
             $maxLength = 0.00;
             $maxBreadth = 0.00;
             $totalHeight = 0.00;
-
+            $orderItemInvoiceDetails = [];
             foreach ($items as $item) {
                 $product = $products[$item->product_id];
-
                 $productWeight = $this->decimal2($product->weight ?? 0);
                 $productLength = $this->decimal2($product->length ?? 0);
                 $productBreadth = $this->decimal2($product->breadth ?? 0);
                 $productHeight = $this->decimal2($product->height ?? 0);
-
                 $totalWeight = $this->decimal2(
                     $totalWeight + ($productWeight * (int) $item->quantity)
                 );
-
                 $maxLength = max($maxLength, $productLength);
                 $maxBreadth = max($maxBreadth, $productBreadth);
-
                 $totalHeight = $this->decimal2(
                     $totalHeight + ($productHeight * (int) $item->quantity)
                 );
-
                 $tax = $itemTaxDetails[$item->id] ?? null;
-
                 if (!$tax) {
                     throw new \Exception(
                         'GST calculation missing for order item ID ' . $item->id
                     );
                 }
-
-                OrderItem::create([
+                $orderItemRecord = OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $item->product_id,
-
                     'product_name' => $product->name ?? '',
                     'product_slug' => $product->slug ?? '',
                     'product_image' => $product->image ?? '',
-
                     'ratti' => $item->ratti !== null
                         ? $this->formatRate($item->ratti)
                         : null,
-
                     'quantity' => (int) $item->quantity,
-
                     'price' => $this->formatCents(
                         $this->moneyToCents($item->price_at_time)
                     ),
-
-                    'total' => $this->formatCents(
-                        $this->moneyToCents($item->total_price)
-                    ),
-
+                    // Use the final line amount after taxable discount and recalculated GST.
+                    'total' => $this->formatCents($tax['line_total_cents']),
                     'weight' => $this->formatDecimal($productWeight),
                     'length' => $this->formatDecimal($productLength),
                     'breadth' => $this->formatDecimal($productBreadth),
                     'height' => $this->formatDecimal($productHeight),
-
                     'gst_rate' => $this->formatRate($tax['gst_rate']),
                     'gst_amount' => $this->formatCents($tax['gst_cents']),
                     'taxable_amount' => $this->formatCents($tax['taxable_cents']),
-
                     'cgst_amount' => $this->formatCents($tax['cgst_cents']),
                     'sgst_amount' => $this->formatCents($tax['sgst_cents']),
                     'igst_amount' => $this->formatCents($tax['igst_cents']),
-
                     'tax_type' => $tax['tax_type'],
                     'hsn_code' => $product->hsn_code,
                 ]);
-            }
 
+                // Persist calculated values directly as well, so an OrderItem model
+                // fillable list, mutator, or saving observer cannot silently retain
+                // the original pre-discount line total. These are the values used by
+                // the order total calculation above.
+                DB::table('order_items')
+                    ->where('id', $orderItemRecord->id)
+                    ->update([
+                        'total' => $this->formatCents($tax['line_total_cents']),
+                        'discount_amount' => $this->formatCents($tax['discount_cents'] ?? 0),
+                        'taxable_amount' => $this->formatCents($tax['taxable_cents']),
+                        'gst_rate' => $this->formatRate($tax['gst_rate']),
+                        'gst_amount' => $this->formatCents($tax['gst_cents']),
+                        'cgst_amount' => $this->formatCents($tax['cgst_cents']),
+                        'sgst_amount' => $this->formatCents($tax['sgst_cents']),
+                        'igst_amount' => $this->formatCents($tax['igst_cents']),
+                        'tax_type' => $tax['tax_type'],
+                        'updated_at' => now(),
+                    ]);
+
+                $orderItemInvoiceDetails[$orderItemRecord->id] = [
+                    'cart_item_id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'unit_price_including_gst' => $this->formatCents($this->moneyToCents($item->price_at_time)),
+                    'quantity' => (int) $item->quantity,
+                    'original_line_amount' => $tax['original_line_amount'],
+                    'original_taxable_amount' => $tax['original_taxable_amount'],
+                    'discount_amount' => $tax['discount_amount'],
+                    'net_taxable_amount' => $tax['taxable_amount'],
+                    'taxable_amount' => $tax['taxable_amount'],
+                    'gst_rate' => $tax['gst_rate'],
+                    'gst_amount' => $tax['gst_amount'],
+                    'cgst_amount' => $tax['cgst_amount'],
+                    'sgst_amount' => $tax['sgst_amount'],
+                    'igst_amount' => $tax['igst_amount'],
+                    'amount' => $tax['amount'],
+                    'tax_type' => $tax['tax_type'],
+                ];
+            }
+            $priceBreakdown = $order->price_breakdown;
+            if (is_string($priceBreakdown)) {
+                $priceBreakdown = json_decode($priceBreakdown, true) ?: [];
+            }
+            $priceBreakdown = is_array($priceBreakdown) ? $priceBreakdown : [];
+            $priceBreakdown['item_tax_details'] = $orderItemInvoiceDetails;
+            $order->update(['price_breakdown' => $priceBreakdown]);
             $order->update([
                 'total_weight' => $this->formatDecimal($totalWeight),
                 'box_length' => $this->formatDecimal($maxLength),
                 'box_breadth' => $this->formatDecimal($maxBreadth),
                 'box_height' => $this->formatDecimal($totalHeight),
             ]);
-
             CartItem::where('cart_id', $cart->id)->delete();
-
             DB::commit();
-
             $order->refresh()->load([
                 'items',
                 'payment',
             ]);
-
             return response()->json([
                 'status' => true,
                 'message' => 'COD order placed successfully',
@@ -709,6 +620,9 @@ class StoreCodOrderController extends Controller
                             ),
                             'total' => $this->formatCents(
                                 $this->moneyToCents($item->total)
+                            ),
+                            'discount_amount' => $this->formatCents(
+                                $this->moneyToCents($item->discount_amount ?? 0)
                             ),
                             'hsn_code' => $item->hsn_code,
                             'gst_rate' => $this->formatRate($item->gst_rate),
@@ -738,100 +652,77 @@ class StoreCodOrderController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-
             Log::error('COD ORDER ERROR', [
                 'message' => $e->getMessage(),
                 'line' => $e->getLine(),
                 'file' => $e->getFile(),
             ]);
-
             return response()->json([
                 'status' => false,
                 'message' => $e->getMessage(),
             ], 422);
         }
     }
-
     public function getCodCharge()
     {
         return response()->json([
-
             'status' => true,
-
             'cod_charge' => (float) config('services.cod_charge')
         ]);
     }
-    
     public function cancelCodOrder(Request $request, $id)
     {
         $request->validate([
             'cancel_reason' => 'required|array|min:1',
             'cancel_reason.*' => 'string|max:255',
         ]);
-
         $cancelReason = implode(', ', $request->cancel_reason);
-
         DB::beginTransaction();
-    
         try {
-    
             $user = auth()->user();
-    
             $order = Order::where('id', $id)
                 ->where('user_id', $user->id)
                 ->with('items')
                 ->firstOrFail();
-    
             if ($order->status == 'cancelled') {
                 return response()->json([
                     'status' => false,
                     'message' => 'Order already cancelled'
                 ]);
             }
-    
             if (in_array($order->status, ['shipped', 'delivered'])) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Order cannot be cancelled now'
                 ]);
             }
-    
             // STOCK WAPAS ADD
             foreach ($order->items as $item) {
-    
                 $product = Product::where('id', $item->product_id)
                     ->lockForUpdate()
                     ->first();
-    
                 if ($product) {
-    
                     $newStock = $product->stock_qty + $item->quantity;
-    
                     $status = 'in_stock';
-    
                     if ($newStock == 0) {
                         $status = 'out_of_stock';
                     } elseif ($newStock <= 5) {
                         $status = 'few_left';
                     }
-    
                     $product->update([
                         'stock_qty' => $newStock,
                         'stock_status' => $status
                     ]);
                 }
             }
-    
             // PAYMENT STATUS UPDATE
             if ($order->payment_id) {
                 $updated = Payment::where('id', $order->payment_id)
                     ->update(['payment_status' => 'cancelled']);
-    
                 if (!$updated) {
                     throw new \Exception('Payment status update failed');
                 }
             }
-
             // ðŸ”¥ COMMISSION UPDATE
             EmployeeCommission::where(
                 'order_id',
@@ -839,7 +730,6 @@ class StoreCodOrderController extends Controller
             )->update([
                 'status' => 'cancelled'
             ]);
-    
             // ORDER STATUS UPDATE
             $order->update([
                 'status' => 'cancelled',
@@ -847,11 +737,8 @@ class StoreCodOrderController extends Controller
                 'cancelled_at' => now(),
                 'cancel_reason' => $cancelReason,
             ]);
-    
             DB::commit();
-
             $order->refresh();
-    
             return response()->json([
                 'status' => true,
                 'message' => 'COD order cancelled successfully',
@@ -862,23 +749,17 @@ class StoreCodOrderController extends Controller
                     'cancel_reason'  => $order->cancel_reason,
                 ]
             ]);
-    
         } catch (\Exception $e) {
-    
             DB::rollBack();
-    
             Log::error('COD CANCEL ERROR', [
                 'message' => $e->getMessage()
             ]);
-    
             return response()->json([
                 'status' => false,
                 'message' => $e->getMessage()
             ], 422);
         }
     }
-
-
     /**
      * Normalize a numeric value to exactly 2 decimal places for monetary-like values.
      */
@@ -886,7 +767,6 @@ class StoreCodOrderController extends Controller
     {
         return round((float) ($value ?? 0), 2, PHP_ROUND_HALF_UP);
     }
-
     /**
      * Normalize GST/percentage rates to exactly 2 decimals.
      */
@@ -894,7 +774,6 @@ class StoreCodOrderController extends Controller
     {
         return round((float) ($value ?? 0), 2, PHP_ROUND_HALF_UP);
     }
-
     /**
      * Convert a monetary value to integer paise before calculations.
      */
@@ -906,7 +785,6 @@ class StoreCodOrderController extends Controller
             PHP_ROUND_HALF_UP
         );
     }
-
     /**
      * Format integer paise as exactly 0.00.
      */
@@ -919,7 +797,6 @@ class StoreCodOrderController extends Controller
             ''
         );
     }
-
     /**
      * Format a percentage/rate as exactly 0.00.
      */
@@ -932,7 +809,6 @@ class StoreCodOrderController extends Controller
             ''
         );
     }
-
     /**
      * Format non-currency decimal fields (weight/dimensions/ratti) as 0.00.
      */
@@ -945,7 +821,6 @@ class StoreCodOrderController extends Controller
             ''
         );
     }
-
     /**
      * Extract GST from a GST-inclusive amount.
      *
@@ -957,10 +832,7 @@ class StoreCodOrderController extends Controller
         $gstRate = $this->normalizeRate($gstRate);
 
         if ($amountCents === 0 || $gstRate <= 0) {
-            return [
-                'taxable_cents' => $amountCents,
-                'gst_cents' => 0,
-            ];
+            return ['taxable_cents' => $amountCents, 'gst_cents' => 0];
         }
 
         $gstCents = (int) round(
@@ -969,11 +841,205 @@ class StoreCodOrderController extends Controller
             PHP_ROUND_HALF_UP
         );
 
-        $taxableCents = $amountCents - $gstCents;
-
         return [
-            'taxable_cents' => $taxableCents,
+            'taxable_cents' => $amountCents - $gstCents,
             'gst_cents' => $gstCents,
         ];
+    }
+
+    /** Calculate GST on a tax-exclusive base; all money values are paise. */
+    private function calculateExclusiveGstCents(int $taxableCents, float $gstRate): int
+    {
+        if ($taxableCents <= 0 || $gstRate <= 0) {
+            return 0;
+        }
+
+        return (int) round(
+            ($taxableCents * $this->normalizeRate($gstRate)) / 100,
+            0,
+            PHP_ROUND_HALF_UP
+        );
+    }
+
+    /**
+     * Calculate item-wise GST after allocating coupon discount to the original
+     * GST-exclusive taxable base. The cart's unit price and line total include GST.
+     */
+    private function calculateProductTaxDetails(
+        $items,
+        $products,
+        int $discountCents,
+        int $subtotalCents,
+        string $taxType
+    ): array {
+        $baseLines = [];
+        $weights = [];
+        $originalGrossCents = 0;
+        $originalTaxableCents = 0;
+        $originalGstCents = 0;
+        $hsnCodes = [];
+
+        foreach ($items as $item) {
+            $product = $products[$item->product_id] ?? null;
+            if (!$product) {
+                throw new \Exception('Product not found while calculating GST');
+            }
+
+            $grossCents = $this->moneyToCents($item->total_price);
+            $unitPriceCents = $this->moneyToCents($item->price_at_time);
+            $gstRate = $this->normalizeRate($product->gst_rate ?? 0);
+            $originalTax = $this->splitInclusiveGst($grossCents, $gstRate);
+
+            $baseLines[$item->id] = [
+                'cart_item_id' => $item->id,
+                'product_id' => $item->product_id,
+                'unit_price_cents' => $unitPriceCents,
+                'quantity' => (int) $item->quantity,
+                'gross_cents' => $grossCents,
+                'gst_rate' => $gstRate,
+                'original_taxable_cents' => $originalTax['taxable_cents'],
+                'original_gst_cents' => $originalTax['gst_cents'],
+                'hsn_code' => $product->hsn_code,
+            ];
+
+            $weights[$item->id] = $originalTax['taxable_cents'];
+            $originalGrossCents += $grossCents;
+            $originalTaxableCents += $originalTax['taxable_cents'];
+            $originalGstCents += $originalTax['gst_cents'];
+
+            if ($product->hsn_code) {
+                $hsnCodes[] = $product->hsn_code;
+            }
+        }
+
+        // A coupon is a discount on taxable value, never more than that value.
+        $discountCents = max(0, min($discountCents, $originalTaxableCents));
+        $discountMap = $this->allocateDiscountCentsByWeight($discountCents, $weights);
+
+        $gstCents = 0;
+        $taxableCents = 0;
+        $cgstCents = 0;
+        $sgstCents = 0;
+        $igstCents = 0;
+        $totalCents = 0;
+        $itemsTaxDetails = [];
+
+        foreach ($baseLines as $cartItemId => $line) {
+            $lineDiscountCents = (int) ($discountMap[$cartItemId] ?? 0);
+            $netTaxableCents = max(0, $line['original_taxable_cents'] - $lineDiscountCents);
+
+            // Preserve the source inclusive GST exactly when this line has no discount.
+            // For discounted lines, calculate GST from the reduced exclusive taxable base.
+            $lineGstCents = $lineDiscountCents === 0
+                ? $line['original_gst_cents']
+                : $this->calculateExclusiveGstCents($netTaxableCents, $line['gst_rate']);
+            $lineTotalCents = $netTaxableCents + $lineGstCents;
+
+            $lineCgstCents = 0;
+            $lineSgstCents = 0;
+            $lineIgstCents = 0;
+            if ($taxType === 'cgst_sgst') {
+                $lineCgstCents = intdiv($lineGstCents, 2);
+                $lineSgstCents = $lineGstCents - $lineCgstCents;
+            } else {
+                $lineIgstCents = $lineGstCents;
+            }
+
+            $gstCents += $lineGstCents;
+            $taxableCents += $netTaxableCents;
+            $cgstCents += $lineCgstCents;
+            $sgstCents += $lineSgstCents;
+            $igstCents += $lineIgstCents;
+            $totalCents += $lineTotalCents;
+
+            $itemsTaxDetails[$cartItemId] = [
+                'cart_item_id' => $line['cart_item_id'],
+                'product_id' => $line['product_id'],
+                'unit_price_including_gst' => $this->formatCents($line['unit_price_cents']),
+                'quantity' => $line['quantity'],
+                'gross_cents' => $line['gross_cents'],
+                'original_line_amount' => $this->formatCents($line['gross_cents']),
+                'original_taxable_cents' => $line['original_taxable_cents'],
+                'original_taxable_amount' => $this->formatCents($line['original_taxable_cents']),
+                'original_gst_cents' => $line['original_gst_cents'],
+                'original_gst_amount' => $this->formatCents($line['original_gst_cents']),
+                'discount_cents' => $lineDiscountCents,
+                'discount_amount' => $this->formatCents($lineDiscountCents),
+                'taxable_cents' => $netTaxableCents,
+                'taxable_amount' => $this->formatCents($netTaxableCents),
+                'gst_rate' => $this->formatRate($line['gst_rate']),
+                'gst_cents' => $lineGstCents,
+                'gst_amount' => $this->formatCents($lineGstCents),
+                'cgst_cents' => $lineCgstCents,
+                'cgst_amount' => $this->formatCents($lineCgstCents),
+                'sgst_cents' => $lineSgstCents,
+                'sgst_amount' => $this->formatCents($lineSgstCents),
+                'igst_cents' => $lineIgstCents,
+                'igst_amount' => $this->formatCents($lineIgstCents),
+                'line_total_cents' => $lineTotalCents,
+                'amount' => $this->formatCents($lineTotalCents),
+                'tax_type' => $taxType,
+                'hsn_code' => $line['hsn_code'],
+            ];
+        }
+
+        return [
+            'gst_cents' => $gstCents,
+            'taxable_cents' => $taxableCents,
+            'cgst_cents' => $cgstCents,
+            'sgst_cents' => $sgstCents,
+            'igst_cents' => $igstCents,
+            'total_cents' => $totalCents,
+            'original_gross_cents' => $originalGrossCents,
+            'original_taxable_cents' => $originalTaxableCents,
+            'original_gst_cents' => $originalGstCents,
+            'discount_cents' => $discountCents,
+            'hsn_codes' => array_values(array_unique($hsnCodes)),
+            'items' => $itemsTaxDetails,
+        ];
+    }
+
+    /** Allocate discount paise proportionally by original taxable value. */
+    private function allocateDiscountCentsByWeight(int $discountCents, array $weights): array
+    {
+        $weights = array_map(static fn ($value) => max(0, (int) $value), $weights);
+        $totalWeight = array_sum($weights);
+        $discountCents = max(0, min($discountCents, $totalWeight));
+        $allocations = array_fill_keys(array_keys($weights), 0);
+
+        if ($discountCents === 0 || $totalWeight === 0) {
+            return $allocations;
+        }
+
+        $remainders = [];
+        $allocated = 0;
+        foreach ($weights as $key => $weight) {
+            $numerator = $discountCents * $weight;
+            $share = min(intdiv($numerator, $totalWeight), $weight);
+            $allocations[$key] = $share;
+            $remainders[$key] = $numerator % $totalWeight;
+            $allocated += $share;
+        }
+
+        $left = $discountCents - $allocated;
+        arsort($remainders, SORT_NUMERIC);
+        while ($left > 0) {
+            $progress = false;
+            foreach (array_keys($remainders) as $key) {
+                if ($allocations[$key] < $weights[$key]) {
+                    $allocations[$key]++;
+                    $left--;
+                    $progress = true;
+                    if ($left === 0) {
+                        break;
+                    }
+                }
+            }
+            if (!$progress) {
+                break;
+            }
+        }
+
+        return $allocations;
     }
 }
