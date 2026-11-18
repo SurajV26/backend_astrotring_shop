@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AdgebraTrackingController;
 
 use App\Http\Controllers\Api\UserApiController;
 use App\Http\Controllers\Api\AstrologerApiController;
@@ -138,6 +139,16 @@ Route::prefix('astrology')->group(function () {
 | Protected APIs (Auth Required for BOTH USER & ASTRO)
 |--------------------------------------------------------------------------
 */
+
+// Public, rate-limited attribution endpoints called by the static Adgebra landing pages.
+Route::prefix('adgebra')->middleware('throttle:120,1')->group(function () {
+    Route::post('/visit', [AdgebraTrackingController::class, 'visit']);
+    Route::post('/click', [AdgebraTrackingController::class, 'click']);
+});
+
+// Authenticated identity link: call after the store app has completed OTP login.
+Route::post('/adgebra/identify', [AdgebraTrackingController::class, 'identify'])
+    ->middleware(['auth:sanctum', 'user', 'throttle:30,1']);
 
 // Route::middleware(['auth:sanctum'])->group(function () {
 Route::middleware(['auth:sanctum', 'session.timeout'])->group(function () {
