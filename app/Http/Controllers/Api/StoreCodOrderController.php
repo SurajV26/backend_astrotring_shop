@@ -24,6 +24,7 @@ class StoreCodOrderController extends Controller
             $request->validate([
                 'coupon_code' => 'nullable|string',
                 'address_id' => 'required|exists:alternative_addresses,id',
+                'adgebra_tracking_id' => 'nullable|uuid',
             ]);
             $address = AlternativeAddress::where('id', $request->address_id)
                 ->where('user_id', $user->id)
@@ -428,6 +429,11 @@ class StoreCodOrderController extends Controller
                 'shipping_status' => 'pending',
                 'paid_at' => null,
             ]);
+            // Link a tracked Adgebra visit to this COD order without changing order pricing or payment logic.
+            app(\App\Services\AdgebraAttributionService::class)->attachToOrder(
+                (int) $order->id,
+                $request->input('adgebra_tracking_id')
+            );
             /*
             |--------------------------------------------------------------------------
             | Employee Commission

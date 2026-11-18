@@ -1,6 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Adgebra\PartnerAuthController;
+use App\Http\Controllers\Adgebra\DashboardController as AdgebraDashboardController;
+use App\Http\Middleware\EnsureAdgebraPartner;
 
 /*
 |--------------------------------------------------------------------------
@@ -12,6 +15,30 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
+
+// Separate Adgebra partner portal: Users / Cart / Order only.
+Route::prefix('adgebra')->name('adgebra.')->group(function () {
+    Route::get('/login', [PartnerAuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [PartnerAuthController::class, 'login'])
+        ->middleware('throttle:5,1')
+        ->name('login.submit');
+
+    Route::middleware([EnsureAdgebraPartner::class])->group(function () {
+        Route::get('/', [AdgebraDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/users', [AdgebraDashboardController::class, 'users'])->name('users');
+        Route::get('/carts', [AdgebraDashboardController::class, 'carts'])->name('carts');
+        Route::get('/orders', [AdgebraDashboardController::class, 'orders'])->name('orders');
+
+        Route::get('/export/users.csv', [AdgebraDashboardController::class, 'exportUsersCsv'])->name('export.users.csv');
+        Route::get('/export/users.xlsx', [AdgebraDashboardController::class, 'exportUsersExcel'])->name('export.users.xlsx');
+        Route::get('/export/carts.csv', [AdgebraDashboardController::class, 'exportCartsCsv'])->name('export.carts.csv');
+        Route::get('/export/carts.xlsx', [AdgebraDashboardController::class, 'exportCartsExcel'])->name('export.carts.xlsx');
+        Route::get('/export/orders.csv', [AdgebraDashboardController::class, 'exportOrdersCsv'])->name('export.orders.csv');
+        Route::get('/export/orders.xlsx', [AdgebraDashboardController::class, 'exportOrdersExcel'])->name('export.orders.xlsx');
+
+        Route::post('/logout', [PartnerAuthController::class, 'logout'])->name('logout');
+    });
+});
 
 Route::namespace('App\Http\Controllers\Auth')
     ->name('auth.')

@@ -29,6 +29,7 @@ class StoreRazorpayPaymentController extends Controller
                 'coupon_code' => 'nullable|string',
                 'address_id' => 'nullable|exists:alternative_addresses,id',
                 'wallet_amount' => 'nullable|numeric|min:0',
+                'adgebra_tracking_id' => 'nullable|uuid',
             ]);
 
             $walletRequestedCents = $this->moneyToCents($request->wallet_amount ?? 0);
@@ -159,6 +160,12 @@ class StoreRazorpayPaymentController extends Controller
                 ],
             ]);
 
+            // Persist the visit-to-Razorpay-order mapping before the checkout window opens.
+            app(\App\Services\AdgebraAttributionService::class)->storeRazorpayOrder(
+                (string) $gatewayOrder['id'],
+                $request->input('adgebra_tracking_id')
+            );
+
             return response()->json([
                 'status' => true,
                 'order_id' => $gatewayOrder['id'],
@@ -181,7 +188,8 @@ class StoreRazorpayPaymentController extends Controller
             'razorpay_signature' => 'nullable',
             'address_id' => 'nullable|exists:alternative_addresses,id',
             'coupon_code' => 'nullable',
-            'wallet_amount' => 'nullable|numeric|min:0'
+            'wallet_amount' => 'nullable|numeric|min:0',
+            'adgebra_tracking_id' => 'nullable|uuid',
         ]);
         DB::beginTransaction();
         try {
@@ -561,6 +569,12 @@ class StoreRazorpayPaymentController extends Controller
                 'status' => 'paid',
                 'paid_at' => now(),
             ]);
+            // Match the verified store order to the server-recorded Adgebra click attribution.
+            app(\App\Services\AdgebraAttributionService::class)->attachToOrder(
+                (int) $order->id,
+                $request->input('adgebra_tracking_id'),
+                $request->input('razorpay_order_id')
+            );
             /*
             |--------------------------------------------------------------------------
             | Employee Commission
