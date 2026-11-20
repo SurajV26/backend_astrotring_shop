@@ -687,6 +687,7 @@
             }
         }
     </style>
+    @stack('styles')
 </head>
 
 <body>
@@ -698,12 +699,15 @@
             </div>
             <div class="navlabel">Store activity</div>
             <nav class="nav" aria-label="Partner navigation">
+                <a href="{{ route('adgebra.traffic', array_diff_key(request()->query(), ['search' => true])) }}"
+                    class="{{ request()->routeIs('adgebra.traffic') ? 'active' : '' }}"><span
+                        class="navicon">T</span>Traffic</a>
                 <a href="{{ route('adgebra.users', request()->query()) }}"
                     class="{{ request()->routeIs('adgebra.users') ? 'active' : '' }}"><span
                         class="navicon">U</span>Users</a>
-                <a href="{{ route('adgebra.carts', request()->query()) }}"
-                    class="{{ request()->routeIs('adgebra.carts') ? 'active' : '' }}"><span
-                        class="navicon">C</span>Cart</a>
+                <!--<a href="{{ route('adgebra.carts', request()->query()) }}"-->
+                <!--    class="{{ request()->routeIs('adgebra.carts') ? 'active' : '' }}"><span-->
+                <!--        class="navicon">C</span>Cart</a>-->
                 <a href="{{ route('adgebra.orders', request()->query()) }}"
                     class="{{ request()->routeIs('adgebra.orders') ? 'active' : '' }}"><span
                         class="navicon">O</span>Order</a>
@@ -713,7 +717,7 @@
 
         <div class="main">
             <header class="topbar">
-                <div class="topmeta"><span class="live-dot"></span> Partner reporting portal <span>·</span> India time
+                <div class="topmeta">Partner reporting portal <span>&middot;</span> {{ config('app.timezone') }}
                 </div>
                 <div class="topmeta">
                     <span>Signed in as <strong>{{ $partner->username ?? 'Partner' }}</strong></span>
@@ -729,7 +733,7 @@
                         <h1>@yield('page_heading', 'Users')</h1>
                         <p>@yield('page_subheading', 'Only customers attributed to approved Adgebra landing-page traffic.')</p>
                     </div>
-                    <div class="headerpill">Last 30 days by default · Data refreshes on page load</div>
+                    <div class="headerpill">Last 30 days by default &middot; Updates on page load</div>
                 </div>
 
                 <form class="filters" method="GET" action="{{ request()->url() }}">
@@ -755,17 +759,25 @@
                         <div class="field"><label for="creative_id">Creative ID</label><input id="creative_id"
                                 name="creative_id" value="{{ $filters['creative_id'] }}" placeholder="Creative ID">
                         </div>
+                        @unless(request()->routeIs('adgebra.traffic'))
                         <div class="field"><label for="search">Search</label><input id="search" name="search"
                                 value="{{ $filters['search'] }}" placeholder="Name, mobile, order, product"></div>
+                        @endunless
                         <div class="actions"><button class="btn primary" type="submit">Apply filters</button><a
                                 class="btn" href="{{ request()->url() }}">Reset</a></div>
                     </div>
                 </form>
 
                 @yield('content')
+                @if(request()->routeIs('adgebra.traffic'))
+                <div class="footnote">Traffic includes anonymous Adgebra visitors. Unique visitors are counted by browser ID,
+                    so the same person on different browsers can count more than once. Shop clicks record link clicks to
+                    astrotring.shop, not confirmed shop page loads. Both visits and clicks must fall within the selected dates.</div>
+                @else
                 <div class="footnote">Customer contact details are masked. A customer appears here only after an Adgebra
                     landing-page visit is identified with their authenticated AstroTring account. Orders require a
                     matching Adgebra attribution record.</div>
+                @endif
             </main>
         </div>
     </div>

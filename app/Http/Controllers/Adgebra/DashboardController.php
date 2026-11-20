@@ -19,6 +19,37 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class DashboardController extends Controller
 {
+    public function traffic(Request $request)
+    {
+        $filters = $this->filters($request);
+        // Aggregate clicks first so repeated clicks never multiply landing visits.
+        $clicks = DB::table('adgebra_clicks')
+            ->whereBetween('created_at', [$filters['from_start'], $filters['to_end']])
+            ->select('visit_id')
+            ->selectRaw('COUNT(*) as click_count')
+            ->groupBy('visit_id');
+
+        $query = DB::table('adgebra_visits as v')
+            ->where('v.source', 'Adgebra')
+            ->whereBetween('v.created_at', [$filters['from_start'], $filters['to_end']])
+            ->leftJoinSub($clicks, 'clicks', function ($join) {
+                $join->on('clicks.visit_id', '=', 'v.id');
+            });
+        $this->applyVisitFilters($query, $filters);
+
+        $metrics = 'COUNT(*) as visits, COUNT(DISTINCT v.visitor_key) as visitors, '
+            . 'COALESCE(SUM(clicks.click_count), 0) as shop_clicks, '
+            . 'COUNT(DISTINCT CASE WHEN clicks.click_count > 0 THEN v.visitor_key END) as shop_visitors';
+
+        return view('adgebra.traffic', [
+            'partner' => $request->attributes->get('adgebra_partner'),
+            'filters' => $filters,
+            'totals' => (clone $query)->selectRaw($metrics)->first(),
+            'pages' => $query->select('v.landing_page')->selectRaw($metrics)
+                ->groupBy('v.landing_page')->orderByDesc('visits')->get(),
+        ]);
+    }
+
     public function index(Request $request)
     {
         return redirect()->route('adgebra.users', $request->query());
