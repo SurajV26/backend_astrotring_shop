@@ -16,7 +16,7 @@ use App\Http\Middleware\EnsureAdgebraPartner;
 |
 */
 
-// Separate Adgebra partner portal: Users / Cart / Order only.
+// Separate Adgebra partner portal.
 Route::prefix('adgebra')->name('adgebra.')->group(function () {
     Route::get('/login', [PartnerAuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [PartnerAuthController::class, 'login'])
@@ -25,6 +25,7 @@ Route::prefix('adgebra')->name('adgebra.')->group(function () {
 
     Route::middleware([EnsureAdgebraPartner::class])->group(function () {
         Route::get('/', [AdgebraDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/traffic', [AdgebraDashboardController::class, 'traffic'])->name('traffic');
         Route::get('/users', [AdgebraDashboardController::class, 'users'])->name('users');
         Route::get('/carts', [AdgebraDashboardController::class, 'carts'])->name('carts');
         Route::get('/orders', [AdgebraDashboardController::class, 'orders'])->name('orders');
