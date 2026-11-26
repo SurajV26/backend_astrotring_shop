@@ -1,16 +1,16 @@
 @extends('layouts.master')
 
-@section('title') Blogs @endsection
+@section('title') Policies @endsection
 
 @section('content')
 <div class="row">
     <div class="col-12">
         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-            <h4 class="mb-sm-0 font-size-18">All Blogs</h4>
+            <h4 class="mb-sm-0 font-size-18">All Policies</h4>
 
-            @if (Can::is_accessible('blogs', 'create'))
+            @if (Can::is_accessible('policies', 'create'))
                 <div class="page-title-right">
-                    <a href="{{ route('admin.blogs.create.index') }}" class="btn btn-soft-info">
+                    <a href="{{ route('admin.policies.create.index') }}" class="btn btn-soft-info">
                         <i class="fas fa-plus"></i> Create
                     </a>
                 </div>
@@ -33,12 +33,12 @@
                 <div class="row">
 
                     <div class="col">
-                        <label class="form-label fw-bold">Blog Category</label>
-                        <select id="blog_category_id"
+                        <label class="form-label fw-bold">Policy Category</label>
+                        <select id="policy_category_id"
                                 class="form-control select2-class2"
                                 data-placeholder="Select Category">
                             <option value=""></option>
-                            @foreach(\App\Models\BlogCategory::orderBy('name')->get() as $category)
+                            @foreach(\App\Models\PolicyCategory::orderBy('name')->get() as $category)
                                 <option value="{{ $category->id }}">
                                     {{ $category->name }}
                                 </option>
@@ -47,14 +47,14 @@
                     </div>
 
                     <div class="col">
-                        <label class="form-label fw-bold">Blog</label>
-                        <select id="blog_id"
+                        <label class="form-label fw-bold">Policy</label>
+                        <select id="policy_id"
                                 class="form-control select2-class2"
-                                data-placeholder="Select Blog">
+                                data-placeholder="Select Policy">
                             <option value=""></option>
-                            @foreach(\App\Models\Blog::orderBy('name')->get() as $blog)
-                                <option value="{{ $blog->id }}">
-                                    {{ $blog->name }}
+                            @foreach(\App\Models\Policy::orderBy('name')->get() as $policy)
+                                <option value="{{ $policy->id }}">
+                                    {{ $policy->name }}
                                 </option>
                             @endforeach
                         </select>
@@ -74,7 +74,7 @@
                     <thead>
                         <tr>
                             <th>Category</th>
-                            <th>Blog Name</th>
+                            <th>Policy Name</th>
                             <th>Slug</th>
                             <th width="120">Action</th>
                         </tr>
@@ -99,16 +99,16 @@ $(function () {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{{ route('admin.blogs.list') }}",
+            url: "{{ route('admin.policies.list') }}",
             data: function (d) {
-                d.blog_category_id = $('#blog_category_id').val();
-                d.blog_id = $('#blog_id').val();
+                d.policy_category_id = $('#policy_category_id').val();
+                d.policy_id = $('#policy_id').val();
             }
         },
         columns: [
             { data: 'category_name', name: 'category.name' },
-            { data: 'name', name: 'blogs.name' },  
-            { data: 'slug', name: 'blogs.slug' },   
+            { data: 'name', name: 'policies.name' },  
+            { data: 'slug', name: 'policies.slug' },   
             {
                 data: null,
                 orderable: false,
@@ -116,17 +116,17 @@ $(function () {
                 className: 'text-center',
                 render: function (data, type, row) {
                     return `
-                        @if (Can::is_accessible('blogs', 'update'))
-                            <a href="{{ route('admin.blogs.update.index') }}/${row.id}"
+                        @if (Can::is_accessible('policies', 'update'))
+                            <a href="{{ route('admin.policies.update.index') }}/${row.id}"
                                class="btn btn-soft-info btn-sm waves-effect waves-light">
                                 <i class="bx bx-pencil font-size-16"></i>
                             </a>
                         @endif
 
-                        @if (Can::is_accessible('blogs', 'delete'))
+                        @if (Can::is_accessible('policies', 'delete'))
                             <button type="button"
                                     class="btn btn-soft-danger btn-sm waves-effect waves-light delete-entry"
-                                    data-href="{{ route('admin.blogs.delete') }}/${row.id}">
+                                    data-href="{{ route('admin.policies.delete') }}/${row.id}">
                                 <i class="bx bx-trash font-size-16"></i>
                             </button>
                         @endif
@@ -136,13 +136,13 @@ $(function () {
         ]
     });
 
-    $('#blog_category_id, #blog_id').on('change', function () {
+    $('#policy_category_id, #policy_id').on('change', function () {
         reloadTable();
     });
 
     $('#reset-filter-btn').on('click', function () {
-        $('#blog_category_id').val('').trigger('change');
-        $('#blog_id').val('').trigger('change');
+        $('#policy_category_id').val('').trigger('change');
+        $('#policy_id').val('').trigger('change');
         reloadTable();
     });
 

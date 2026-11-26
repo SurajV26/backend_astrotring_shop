@@ -123,6 +123,22 @@ $user = auth()->user();
                         <span>Store Banner</span>
                     </a>
                 </li>
+                
+                <li class="menu-title">POLICIES</li>
+
+                <li>
+                    <a href="{{ route('admin.policy_categories.index') }}">
+                        <i class="bx bx-layer"></i>
+                        <span>Policy Category</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{{ route('admin.policies.index') }}">
+                        <i class="bx bx-list-ul"></i>
+                        <span>Policy</span>
+                    </a>
+                </li>
 
                 {{-- ================= EMPLOYEE ================= --}}
                 @elseif($user)
@@ -258,6 +274,29 @@ $user = auth()->user();
                             <span>Store Banner</span>
                         </a>
                     </li>
+                    @endif
+                    
+                    {{-- POLICIES --}}
+                    @if ($user->hasAccess('policy_categories') || $user->hasAccess('policies'))
+                        <li class="menu-title">Policy</li>
+                    @endif
+
+                    @if ($user->hasAccess('policy_categories'))
+                        <li>
+                            <a href="{{ route('admin.policy_categories.index') }}">
+                                <i class="bx bx-layer"></i>
+                                <span>Policy Category</span>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if ($user->hasAccess('policies'))
+                        <li>
+                            <a href="{{ route('admin.policies.index') }}">
+                                <i class="bx bx-list-ul"></i>
+                                <span>Policy</span>
+                            </a>
+                        </li>
                     @endif
                     
                 @endif

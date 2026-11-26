@@ -8,8 +8,8 @@ use App\Http\Controllers\Api\AstrologerApiController;
 use App\Http\Controllers\Api\EmployeeAffiliateApiController;
 use App\Http\Controllers\Api\ReviewApiController;
 use App\Http\Controllers\Api\HoroscopeApiController;
-use App\Http\Controllers\Api\BlogCategoryApiController;
-use App\Http\Controllers\Api\BlogApiController;
+use App\Http\Controllers\Api\PolicyCategoryApiController;
+use App\Http\Controllers\Api\PolicyApiController;
 use App\Http\Controllers\Api\PayoutApiController;
 use App\Http\Controllers\Api\RazorpayPaymentController;
 use App\Http\Controllers\Api\StoreCodOrderController;
@@ -75,13 +75,13 @@ Route::get('astro', [AstrologerApiController::class, 'list']);
 Route::get('horoscopes', [HoroscopeApiController::class, 'index']);
 Route::get('horoscopes/{id}', [HoroscopeApiController::class, 'show']);
 
-// Blog Categories
-Route::get('blog_categories', [BlogCategoryApiController::class, 'index']);
-Route::get('blog_categories/{id}', [BlogCategoryApiController::class, 'show']);
+// Policy Categories
+Route::get('policy_categories', [PolicyCategoryApiController::class, 'index']);
+Route::get('policy_categories/{id}', [PolicyCategoryApiController::class, 'show']);
 
-// Blogs
-Route::get('blogs', [BlogApiController::class, 'index']);
-Route::get('blogs/{id}', [BlogApiController::class, 'show']);
+// Policies
+Route::get('policies', [PolicyApiController::class, 'index']);
+Route::get('policies/{id}', [PolicyApiController::class, 'show']);
 
 // BANNERS
 Route::get('banners', [BannerApiController::class, 'index']);

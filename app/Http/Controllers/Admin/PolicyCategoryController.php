@@ -3,19 +3,19 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\AdminController;
-use App\Models\BlogCategory;
+use App\Models\PolicyCategory;
 use Illuminate\Http\Request;
 
-class BlogCategoryController extends AdminController
+class PolicyCategoryController extends AdminController
 {
     public function getIndex(Request $request)
     {
-        return view('admin.blog_categories.index');
+        return view('admin.policy_categories.index');
     }
 
     public function getList(Request $request)
     {
-        $list = BlogCategory::query()
+        $list = PolicyCategory::query()
             ->when($request->id, function ($q) use ($request) {
                 $q->where('id', $request->id);
             })
@@ -29,24 +29,24 @@ class BlogCategoryController extends AdminController
 
     public function getCreate()
     {
-        return view('admin.blog_categories.create');
+        return view('admin.policy_categories.create');
     }
 
     public function postCreate(Request $request)
     {
         $request->validate([
-            'name' => 'required|unique:blog_categories,name',
-            'slug' => 'nullable|unique:blog_categories,slug',
+            'name' => 'required|unique:policy_categories,name',
+            'slug' => 'nullable|unique:policy_categories,slug',
         ]);
 
         try {
 
-            BlogCategory::create([
+            PolicyCategory::create([
                 'name' => $request->name,
                 'slug' => \Str::slug($request->slug ?? $request->name),
             ]);
 
-            return response()->json(['message' => 'Blog category created successfully']);
+            return response()->json(['message' => 'Policy category created successfully']);
         } catch (\Throwable $e) {
             \Log::error($e);
 
@@ -56,43 +56,43 @@ class BlogCategoryController extends AdminController
 
     public function getUpdate(Request $request)
     {
-        $blogCategory = BlogCategory::findOrFail($request->id);
+        $policyCategory = PolicyCategory::findOrFail($request->id);
 
-        return view('admin.blog_categories.update', compact('blogCategory'));
+        return view('admin.policy_categories.update', compact('policyCategory'));
     }
 
     public function postUpdate(Request $request, $id)
     {
-        $blogCategory = BlogCategory::findOrFail($id);
+        $policyCategory = PolicyCategory::findOrFail($id);
 
         $request->validate([
-            'name' => 'required|unique:blog_categories,name,'.$blogCategory->id,
-            'slug' => 'required|unique:blog_categories,slug,'.$blogCategory->id,
+            'name' => 'required|unique:policy_categories,name,'.$policyCategory->id,
+            'slug' => 'required|unique:policy_categories,slug,'.$policyCategory->id,
         ]);
 
-        $blogCategory->update([
+        $policyCategory->update([
             'name' => $request->name,
             'slug' => \Str::slug($request->slug),
         ]);
 
-        return response()->json(['message' => 'Blog category updated successfully']);
+        return response()->json(['message' => 'Policy category updated successfully']);
     }
 
     public function getDelete(Request $request)
     {
-        $blogCategory = \App\Models\BlogCategory::findOrFail($request->id);
+        $policyCategory = \App\Models\PolicyCategory::findOrFail($request->id);
 
-        $blogCategory->delete();
+        $policyCategory->delete();
 
         return response()->json(['message' => 'Your request processed successfully.']);
     }
 
     public function getChangeStatus(Request $request)
     {
-        $blogCategory = \App\Models\BlogCategory::findOrFail($request->id);
-        if (! blank($blogCategory)) {
-            $blogCategory->status = (int) ! $blogCategory->status;
-            $blogCategory->save();
+        $policyCategory = \App\Models\PolicyCategory::findOrFail($request->id);
+        if (! blank($policyCategory)) {
+            $policyCategory->status = (int) ! $policyCategory->status;
+            $policyCategory->save();
         }
 
         return response()->json(['message' => 'Your request processed successfully.']);
