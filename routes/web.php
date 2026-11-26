@@ -405,32 +405,32 @@ Route::namespace('App\Http\Controllers\Admin')
                         Route::get('delete/{id?}', 'PayoutController@getDelete')->name('delete');
                     });
 
-                Route::prefix('blog_categories')
-                    ->name('blog_categories.')
+                Route::prefix('policy_categories')
+                    ->name('policy_categories.')
                     ->group(function () {
-                        Route::get('/', 'BlogCategoryController@getIndex')->name('index');
-                        Route::get('list', 'BlogCategoryController@getList')->name('list');
-                        Route::get('create', 'BlogCategoryController@getCreate')->name('create.index');
-                        Route::post('create', 'BlogCategoryController@postCreate')->name('create');
-                        Route::get('update/{id?}', 'BlogCategoryController@getUpdate')->name('update.index');
-                        Route::post('update/{id?}', 'BlogCategoryController@postUpdate')->name('update');
-                        Route::get('delete/{id?}', 'BlogCategoryController@getDelete')->name('delete');
-                        Route::get('change/status/{id?}', 'BlogCategoryController@getChangeStatus')->name('change.status');
-                        Route::get('view/{id?}', 'BlogCategoryController@getView')->name('view');
+                        Route::get('/', 'PolicyCategoryController@getIndex')->name('index');
+                        Route::get('list', 'PolicyCategoryController@getList')->name('list');
+                        Route::get('create', 'PolicyCategoryController@getCreate')->name('create.index');
+                        Route::post('create', 'PolicyCategoryController@postCreate')->name('create');
+                        Route::get('update/{id?}', 'PolicyCategoryController@getUpdate')->name('update.index');
+                        Route::post('update/{id?}', 'PolicyCategoryController@postUpdate')->name('update');
+                        Route::get('delete/{id?}', 'PolicyCategoryController@getDelete')->name('delete');
+                        Route::get('change/status/{id?}', 'PolicyCategoryController@getChangeStatus')->name('change.status');
+                        Route::get('view/{id?}', 'PolicyCategoryController@getView')->name('view');
                     });
 
-                Route::prefix('blogs')
-                    ->name('blogs.')
+                Route::prefix('policies')
+                    ->name('policies.')
                     ->group(function () {
-                        Route::get('/', 'BlogController@getIndex')->name('index');
-                        Route::get('list', 'BlogController@getList')->name('list');
-                        Route::get('create', 'BlogController@getCreate')->name('create.index');
-                        Route::post('create', 'BlogController@postCreate')->name('create');
-                        Route::get('update/{id?}', 'BlogController@getUpdate')->name('update.index');
-                        Route::post('update/{id?}', 'BlogController@postUpdate')->name('update');
-                        Route::get('delete/{id?}', 'BlogController@getDelete')->name('delete');
-                        Route::get('change/status/{id?}', 'BlogController@getChangeStatus')->name('change.status');
-                        Route::get('view/{id?}', 'BlogController@getView')->name('view');
+                        Route::get('/', 'PolicyController@getIndex')->name('index');
+                        Route::get('list', 'PolicyController@getList')->name('list');
+                        Route::get('create', 'PolicyController@getCreate')->name('create.index');
+                        Route::post('create', 'PolicyController@postCreate')->name('create');
+                        Route::get('update/{id?}', 'PolicyController@getUpdate')->name('update.index');
+                        Route::post('update/{id?}', 'PolicyController@postUpdate')->name('update');
+                        Route::get('delete/{id?}', 'PolicyController@getDelete')->name('delete');
+                        Route::get('change/status/{id?}', 'PolicyController@getChangeStatus')->name('change.status');
+                        Route::get('view/{id?}', 'PolicyController@getView')->name('view');
                     });
 
                 /*  
