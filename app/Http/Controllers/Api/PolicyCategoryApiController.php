@@ -3,35 +3,35 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\BlogCategory;
+use App\Models\PolicyCategory;
 use Illuminate\Http\Request;
 
-class BlogCategoryApiController extends Controller
+class PolicyCategoryApiController extends Controller
 {
     public function index()
     {
-        $blogCategory = BlogCategory::orderBy('id', 'desc')->get();
+        $policyCategory = PolicyCategory::orderBy('id', 'desc')->get();
 
         return response()->json([
             'status' => true,
-            'data'   => $blogCategory,
+            'data'   => $policyCategory,
         ]);
     }
 
     public function show($id)
     {
-        $blogCategory = BlogCategory::find($id);
+        $policyCategory = PolicyCategory::find($id);
 
-        if (! $blogCategory) {
+        if (! $policyCategory) {
             return response()->json([
                 'status'  => false,
-                'message' => 'Blog Category not found',
+                'message' => 'Policy Category not found',
             ], 404);
         }
 
         return response()->json([
             'status' => true,
-            'data'   => $blogCategory,
+            'data'   => $policyCategory,
         ]);
     }
 }
